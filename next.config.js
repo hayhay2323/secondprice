@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // 啟用靜態導出
+  output: 'export',
   images: {
     unoptimized: true,
   },
