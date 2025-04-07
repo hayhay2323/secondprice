@@ -40,15 +40,10 @@ jobs:
         uses: actions/configure-pages@v4
         
       - name: Install dependencies
-        run: |
-          npm ci
-          npm install sharp
+        run: npm ci
       
       - name: Build with Next.js
-        run: |
-          npm run build
-          cp -r out/_next out/secondprice/
-          cp out/404.html out/404/index.html
+        run: npm run build
       
       - name: Add .nojekyll file
         run: touch out/.nojekyll
