@@ -42,11 +42,11 @@ jobs:
       
       - name: Build with Next.js
         run: npm run build
-        env:
-          NODE_ENV: production
       
-      - name: Add .nojekyll file
-        run: touch out/.nojekyll
+      - name: Copy .nojekyll file
+        run: |
+          touch out/.nojekyll
+          cp public/.nojekyll out/
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
