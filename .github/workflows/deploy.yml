@@ -18,10 +18,6 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
-env:
-  NODE_ENV: production
-  NEXT_PUBLIC_BASE_PATH: /secondprice
-
 jobs:
   # 構建工作
   build:
@@ -40,10 +36,14 @@ jobs:
         uses: actions/configure-pages@v4
         
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+          npm install sharp
       
       - name: Build with Next.js
         run: npm run build
+        env:
+          NODE_ENV: production
       
       - name: Add .nojekyll file
         run: touch out/.nojekyll
