@@ -1,34 +1,35 @@
-import Link from 'next/link'
+import React from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 const Footer = () => {
-  const currentYear = new Date().getFullYear();
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+  };
 
-  // 頁腳導航列表
-  const footerLinks = [
-    {
-      title: '網站導航',
-      links: [
-        { name: '首頁', href: '/' },
-        { name: '搜索', href: '/search' },
-        { name: '關於我們', href: '/about' },
-        { name: '隱私政策', href: '/privacy' },
-        { name: '使用條款', href: '/terms' },
-      ]
-    },
-    {
-      title: '支持平台',
-      links: [
-        { name: 'Carousell', href: 'https://hk.carousell.com', external: true },
-        { name: 'Facebook Marketplace', href: 'https://www.facebook.com/marketplace', external: true },
-      ]
-    },
-    {
-      title: '聯繫我們',
-      links: [
-        { name: '電子郵件', href: 'mailto:contact@secondprice.hk' },
-        { name: '意見反饋', href: '/feedback' },
-      ]
-    }
+  // 關於我們的連結
+  const aboutLinks = [
+    { name: "關於我們", href: "/about" },
+    { name: "我們的使命", href: "/mission" },
+    { name: "隱私政策", href: "/privacy" },
+    { name: "服務條款", href: "/terms" },
+  ];
+
+  // 服務連結
+  const serviceLinks = [
+    { name: "二手比價", href: "/search" },
+    { name: "物品評估", href: "/evaluate" },
+    { name: "回收指南", href: "/recycle-guide" },
+    { name: "賣家中心", href: "/seller" },
+  ];
+
+  // 資源連結
+  const resourceLinks = [
+    { name: "環保知識庫", href: "/knowledge" },
+    { name: "常見問題", href: "/faq" },
+    { name: "使用教學", href: "/tutorial" },
+    { name: "聯絡我們", href: "/contact" },
   ];
 
   // 社交媒體鏈接
@@ -72,19 +73,40 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-gray-900 text-white pt-12 pb-8">
-      <div className="container-custom">
-        {/* 頁腳頂部區域 - Logo和描述 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-          <div className="md:col-span-1">
-            <Link href="/" className="block mb-4">
-              <span className="text-2xl font-bold">
-                <span className="text-secondary-400">Second</span>
-                <span className="text-primary-400">Price</span>
-              </span>
+    <footer className="relative">
+      {/* 背景裝飾 */}
+      <div className="absolute inset-0 bg-gray-900 -z-10"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-900/30 to-secondary-900/30 -z-10"></div>
+      
+      {/* 波浪分隔符 */}
+      <div className="absolute top-0 left-0 right-0 transform -translate-y-99%">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="w-full h-auto text-gray-900 fill-current">
+          <path d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,218.7C672,203,768,149,864,117.3C960,85,1056,75,1152,80C1248,85,1344,107,1392,117.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+      </div>
+
+      <div className="container-custom pt-16 pb-12 text-white">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 mb-10">
+          {/* Logo與介紹區 */}
+          <motion.div 
+            className="lg:col-span-2"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+          >
+            <Link href="/" className="inline-block mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-secondary-400 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">SP</span>
+                </div>
+                <span className="ml-2 text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-secondary-300">
+                  SecondPrice
+                </span>
+              </div>
             </Link>
-            <p className="text-gray-400 mb-6">
-              二手商品價格比較平台，幫助您找到最划算的二手商品，促進循環經濟發展。
+            <p className="text-gray-300 mb-6 max-w-md leading-relaxed">
+              我們致力於推動循環經濟發展，透過智能比價和資源匹配，讓二手物品找到新主人，減少資源浪費與環境汙染。
             </p>
             
             {/* 社交媒體鏈接 */}
@@ -95,73 +117,100 @@ const Footer = () => {
                   href={link.href} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800/30 rounded-full"
                   aria-label={link.name}
                 >
                   {link.icon}
                 </a>
               ))}
             </div>
-          </div>
+          </motion.div>
           
-          {/* 頁腳導航區域 */}
-          <div className="md:col-span-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {footerLinks.map((section, index) => (
-                <div key={index}>
-                  <h3 className="text-lg font-medium mb-4">{section.title}</h3>
-                  <ul className="space-y-3">
-                    {section.links.map((link, linkIndex) => (
-                      <li key={linkIndex}>
-                        {link.external ? (
-                          <a 
-                            href={link.href} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-gray-400 hover:text-white transition-colors"
-                          >
-                            {link.name}
-                          </a>
-                        ) : (
-                          <Link 
-                            href={link.href}
-                            className="text-gray-400 hover:text-white transition-colors"
-                          >
-                            {link.name}
-                          </Link>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* 連結區域 */}
+          <FooterLinkColumn title="關於我們" links={aboutLinks} delay={0.1} />
+          <FooterLinkColumn title="我們的服務" links={serviceLinks} delay={0.2} />
+          <FooterLinkColumn title="資源中心" links={resourceLinks} delay={0.3} />
+          
+          {/* 訂閱區域 */}
+          <motion.div
+            className="lg:col-span-2"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            custom={0.4}
+          >
+            <h3 className="text-lg font-semibold mb-4">訂閱最新消息</h3>
+            <p className="text-gray-300 mb-4">獲取最新的二手市場趨勢、環保資訊與優惠活動</p>
+            <form className="space-y-3">
+              <div className="relative">
+                <input 
+                  type="email" 
+                  placeholder="您的電子郵件" 
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-white"
+                />
+                <button 
+                  type="submit"
+                  className="absolute right-1.5 top-1.5 bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 text-white rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-300 hover:shadow-lg"
+                >
+                  訂閱
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">我們尊重您的隱私，不會發送垃圾郵件。</p>
+            </form>
+          </motion.div>
         </div>
         
         {/* 分隔線 */}
-        <div className="border-t border-gray-800 my-6"></div>
+        <div className="border-t border-gray-800 my-8"></div>
         
-        {/* 頁腳底部區域 - 版權信息 */}
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-500 text-sm mb-4 md:mb-0">
-            &copy; {currentYear} Second Price. 保留所有權利。
-          </p>
-          
-          <div className="flex space-x-4">
-            <Link href="/privacy" className="text-gray-500 hover:text-white text-sm transition-colors">
-              隱私政策
-            </Link>
-            <Link href="/terms" className="text-gray-500 hover:text-white text-sm transition-colors">
-              使用條款
-            </Link>
-            <Link href="/sitemap" className="text-gray-500 hover:text-white text-sm transition-colors">
-              網站地圖
-            </Link>
+        {/* 底部版權資訊 */}
+        <div className="flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+          <p>© {new Date().getFullYear()} SecondPrice.hk 版權所有</p>
+          <div className="flex space-x-6 mt-4 md:mt-0">
+            <Link href="/privacy" className="hover:text-primary-400 transition-colors">隱私政策</Link>
+            <Link href="/terms" className="hover:text-primary-400 transition-colors">使用條款</Link>
+            <Link href="/sitemap" className="hover:text-primary-400 transition-colors">網站地圖</Link>
           </div>
         </div>
       </div>
     </footer>
+  );
+};
+
+// 頁腳連結欄目組件
+const FooterLinkColumn = ({ title, links, delay = 0 }) => {
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={{
+        hidden: { opacity: 0, y: 30 },
+        visible: { 
+          opacity: 1, 
+          y: 0, 
+          transition: { 
+            duration: 0.6,
+            delay 
+          } 
+        }
+      }}
+    >
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <ul className="space-y-3">
+        {links.map((link, index) => (
+          <li key={index}>
+            <Link 
+              href={link.href} 
+              className="text-gray-300 hover:text-primary-400 transition-colors hover:translate-x-1 inline-block hover:underline decoration-primary-500 underline-offset-4"
+            >
+              {link.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </motion.div>
   );
 };
 

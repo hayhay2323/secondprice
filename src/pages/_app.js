@@ -1,27 +1,14 @@
 import '../styles/globals.css'
-import { useEffect } from 'react'
 import Head from 'next/head'
 
 function MyApp({ Component, pageProps }) {
-  useEffect(() => {
-    // 確保在客戶端渲染時加載字體
-    const link = document.createElement('link')
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap'
-    link.rel = 'stylesheet'
-    document.head.appendChild(link)
-  }, [])
-
   return (
     <>
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
-        {/* 預加載關鍵字體 */}
-        <link
-          rel="preload"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          as="style"
-        />
+        <title>SecondPrice.hk - 香港二手商品比價平台</title>
+        <meta name="description" content="SecondPrice.hk 匯集香港各大二手平台商品，智能比價，讓您輕鬆找到最划算的二手寶貝，同時響應可持續發展。" />
       </Head>
       <Component {...pageProps} />
     </>
