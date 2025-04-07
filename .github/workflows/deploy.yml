@@ -36,12 +36,17 @@ jobs:
         uses: actions/configure-pages@v4
         
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install sharp
       
       - name: Build with Next.js
         run: npm run build
         env:
-          NEXT_PUBLIC_BASE_PATH: /secondprice
+          NODE_ENV: production
+      
+      - name: Add .nojekyll file
+        run: touch out/.nojekyll
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

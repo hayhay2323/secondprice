@@ -5,11 +5,16 @@ const nextConfig = {
   output: 'export',
   images: {
     unoptimized: true,
-    domains: ['images.unsplash.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
-  // GitHub Pages配置
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  // 確保在 GitHub Pages 上正確加載資源
+  basePath: process.env.NODE_ENV === 'production' ? '/secondprice' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/secondprice/' : '',
   trailingSlash: true,
   // 確保在生產環境中正確處理樣式
   webpack: (config) => {
