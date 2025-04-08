@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/router';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,7 +18,7 @@ export default function Navbar() {
         setIsScrolled(false);
       }
     };
-
+    
     window.addEventListener('scroll', handleScroll);
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -31,10 +33,7 @@ export default function Navbar() {
   ];
 
   const isActive = (path) => {
-    if (typeof window !== 'undefined') {
-      return window.location.pathname === path;
-    }
-    return false;
+    return router.pathname === path;
   };
 
   return (
@@ -137,7 +136,7 @@ export default function Navbar() {
             </div>
 
             {/* 手機選單按鈕 */}
-            <button 
+            <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-2 rounded-md md:hidden hover:bg-gray-100 transition-colors"
             >
@@ -150,7 +149,7 @@ export default function Navbar() {
 
         {/* 手機選單 */}
         <AnimatePresence>
-          {isMenuOpen && (
+        {isMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -158,20 +157,20 @@ export default function Navbar() {
               className="md:hidden mt-4 overflow-hidden"
             >
               <div className="flex flex-col space-y-3 py-4">
-                {navigationItems.map((item) => (
-                  <Link
-                    href={item.path}
-                    key={item.name}
+              {navigationItems.map((item) => (
+                <Link 
+                  href={item.path} 
+                  key={item.name}
                     className={`px-4 py-2 rounded-lg ${
-                      isActive(item.path)
+                    isActive(item.path) 
                         ? 'bg-primary-50 text-primary-600 font-medium'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name}
+                </Link>
+              ))}
                 <div className="flex space-x-3 px-4 pt-2">
                   <button className="flex-1 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                     登入
@@ -179,10 +178,10 @@ export default function Navbar() {
                   <button className="flex-1 py-2 text-sm font-medium text-white rounded-lg bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 transition-colors">
                     註冊
                   </button>
-                </div>
-              </div>
+            </div>
+          </div>
             </motion.div>
-          )}
+        )}
         </AnimatePresence>
       </div>
     </motion.header>
