@@ -300,6 +300,27 @@ export default function SearchPage() {
     }
   }, [keyword, platform, sort, sortOrder]);
 
+  // 在 searchResults 變化時添加動畫
+  useEffect(() => {
+    if (searchResults.length > 0) {
+      // 在 useEffect 內部動態導入並執行
+      if (typeof window !== 'undefined') {
+        import('animejs').then(({ default: anime }) => {
+          if (anime) {
+            anime({
+              targets: '.search-result-item',
+              translateY: [20, 0],
+              opacity: [0, 1],
+              delay: anime.stagger(50),
+              duration: 400,
+              easing: 'easeOutQuad'
+            });
+          }
+        });
+      }
+    }
+  }, [searchResults]); // 移除 anime 依賴
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
@@ -491,12 +512,13 @@ export default function SearchPage() {
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       {filteredResults.map((product) => (
-                        <ProductCard 
-                          key={product.id} 
-                          product={product} 
-                          onCompare={handleCompare}
-                          isCompared={compareProducts.some(p => p.id === product.id)}
-                        />
+                        <div key={product.id} className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 search-result-item">
+                          <ProductCard 
+                            product={product} 
+                            onCompare={handleCompare}
+                            isCompared={compareProducts.some(p => p.id === product.id)}
+                          />
+                        </div>
                       ))}
                     </div>
                   )}

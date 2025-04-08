@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/router';
@@ -24,6 +24,84 @@ export default function Navbar() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('animejs').then((animeModule) => {
+        // 檢查不同的可能的導出格式
+        let anime = animeModule.default || animeModule;
+        
+        // 如果 anime 仍然不是函數，嘗試檢查其他屬性
+        if (typeof anime !== 'function' && anime.hasOwnProperty('default')) {
+          anime = anime.default;
+        }
+        
+        if (typeof anime === 'function') {
+          anime({
+            targets: '.nav-item',
+            opacity: [0, 1],
+            translateY: ['-10px', 0],
+            delay: anime.stagger(80),
+            duration: 500,
+            easing: 'easeOutQuad'
+          });
+        } else {
+          console.error('anime is not a function:', typeof anime, anime);
+        }
+      }).catch(err => {
+        console.error('Error importing anime.js:', err);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const mobileMenu = document.querySelector('.mobile-menu');
+    if (!mobileMenu) return;
+
+    if (typeof window !== 'undefined') {
+      import('animejs').then((animeModule) => {
+        // 檢查不同的可能的導出格式
+        let anime = animeModule.default || animeModule;
+        
+        // 如果 anime 仍然不是函數，嘗試檢查其他屬性
+        if (typeof anime !== 'function' && anime.hasOwnProperty('default')) {
+          anime = anime.default;
+        }
+        
+        if (typeof anime === 'function') {
+          if (isMenuOpen) {
+            anime({
+              targets: mobileMenu,
+              opacity: [0, 1],
+              translateY: ['-20px', 0],
+              duration: 300,
+              easing: 'easeOutQuad',
+              begin: function() {
+                mobileMenu.style.display = 'block';
+              }
+            });
+          } else {
+            anime({
+              targets: mobileMenu,
+              opacity: [1, 0],
+              translateY: [0, '-20px'],
+              duration: 300,
+              easing: 'easeInQuad',
+              complete: function() {
+                if (!isMenuOpen) {
+                  mobileMenu.style.display = 'none';
+                }
+              }
+            });
+          }
+        } else {
+          console.error('anime is not a function:', typeof anime, anime);
+        }
+      }).catch(err => {
+        console.error('Error importing anime.js:', err);
+      });
+    }
+  }, [isMenuOpen]);
 
   const navigationItems = [
     { name: '首頁', path: '/' },
@@ -66,7 +144,7 @@ export default function Navbar() {
               <Link 
                 href={item.path} 
                 key={item.name}
-                className="group relative font-medium transition-colors text-gray-700 hover:text-primary-600"
+                className="group relative font-medium transition-colors text-gray-700 hover:text-primary-600 nav-item"
               >
                 {item.name}
                 <span className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-500 transition-all duration-300 group-hover:w-full ${
@@ -154,7 +232,7 @@ export default function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden mt-4 overflow-hidden"
+              className="md:hidden mt-4 overflow-hidden mobile-menu"
             >
               <div className="flex flex-col space-y-3 py-4">
               {navigationItems.map((item) => (
@@ -164,7 +242,7 @@ export default function Navbar() {
                     className={`px-4 py-2 rounded-lg ${
                     isActive(item.path) 
                         ? 'bg-primary-50 text-primary-600 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      : 'text-gray-700 hover:bg-gray-50 nav-item'
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >

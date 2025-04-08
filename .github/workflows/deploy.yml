@@ -23,8 +23,9 @@ jobs:
         
       - name: Build
         run: npm run build
-        env:
-          NODE_ENV: production
+        
+      - name: Export static files
+        run: npm run export
         
       - name: Add .nojekyll file
         run: touch ./out/.nojekyll

@@ -1,17 +1,103 @@
 import '../styles/globals.css'
-import Head from 'next/head'
+import { useEffect } from 'react'
+import { useRouter } from 'next/router'
 
 function MyApp({ Component, pageProps }) {
+  const router = useRouter()
+
+  useEffect(() => {
+    // 確保只在客戶端執行
+    if (typeof window === 'undefined') return;
+
+    // 正確的方式直接在需要使用的地方導入
+    const initPageAnimation = async () => {
+      try {
+        // 引入動畫庫，處理 animejs 導出格式
+        const animeModule = await import('animejs');
+        // 檢查不同的可能的導出格式
+        let anime = animeModule.default || animeModule;
+        
+        // 如果 anime 仍然不是函數，嘗試檢查其他屬性
+        if (typeof anime !== 'function' && anime.hasOwnProperty('default')) {
+          anime = anime.default;
+        }
+        
+        // 進入頁面時的初始動畫
+        anime({
+          targets: '#page-content',
+          opacity: [0, 1],
+          translateY: [10, 0],
+          duration: 300,
+          easing: 'easeOutQuad'
+        });
+      } catch (err) {
+        console.error('Error loading anime.js:', err);
+      }
+    };
+
+    initPageAnimation();
+
+    const handleRouteChangeStart = async () => {
+      try {
+        // 引入動畫庫，處理 animejs 導出格式
+        const animeModule = await import('animejs');
+        // 檢查不同的可能的導出格式
+        let anime = animeModule.default || animeModule;
+        
+        // 如果 anime 仍然不是函數，嘗試檢查其他屬性
+        if (typeof anime !== 'function' && anime.hasOwnProperty('default')) {
+          anime = anime.default;
+        }
+        
+        anime({
+          targets: '#page-content',
+          opacity: 0,
+          translateY: -10,
+          duration: 200,
+          easing: 'easeInQuad'
+        });
+      } catch (err) {
+        console.error('Error loading anime.js:', err);
+      }
+    };
+    
+    const handleRouteChangeComplete = async () => {
+      try {
+        // 引入動畫庫，處理 animejs 導出格式
+        const animeModule = await import('animejs');
+        // 檢查不同的可能的導出格式
+        let anime = animeModule.default || animeModule;
+        
+        // 如果 anime 仍然不是函數，嘗試檢查其他屬性
+        if (typeof anime !== 'function' && anime.hasOwnProperty('default')) {
+          anime = anime.default;
+        }
+        
+        anime({
+          targets: '#page-content',
+          opacity: [0, 1],
+          translateY: [10, 0],
+          duration: 300,
+          easing: 'easeOutQuad'
+        });
+      } catch (err) {
+        console.error('Error loading anime.js:', err);
+      }
+    };
+    
+    router.events.on('routeChangeStart', handleRouteChangeStart);
+    router.events.on('routeChangeComplete', handleRouteChangeComplete);
+    
+    return () => {
+      router.events.off('routeChangeStart', handleRouteChangeStart);
+      router.events.off('routeChangeComplete', handleRouteChangeComplete);
+    };
+  }, [router]);
+
   return (
-    <>
-      <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-        <title>SecondPrice.hk - 香港二手商品比價平台</title>
-        <meta name="description" content="SecondPrice.hk 匯集香港各大二手平台商品，智能比價，讓您輕鬆找到最划算的二手寶貝，同時響應可持續發展。" />
-      </Head>
+    <div id="page-content">
       <Component {...pageProps} />
-    </>
+    </div>
   )
 }
 
