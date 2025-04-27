@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/router';
 import Head from 'next/head'
@@ -8,6 +9,10 @@ import Features from '../components/Features'
 import Footer from '../components/Footer'
 import Image from 'next/image';
 import axios from 'axios'; // 引入 axios
+import AuthModal from '../components/AuthModal'; // Import the new component
+import ExploreFeed from '../components/ExploreFeed'; // Import ExploreFeed
+import ProductList from '../components/ProductList'; // Import ProductList
+import BiddingSection from '../components/BiddingSection'; // Import BiddingSection
 
 // Helper function for conditional class names
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -16,8 +21,23 @@ export default function Home() {
   const router = useRouter();
   const [searchKeyword, setSearchKeyword] = useState('');
 
+  // 添加語言偏好狀態
+  const [language, setLanguage] = useState('zh-HK'); // 默認為繁體中文
+
   // 登入狀態
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Add state for showing the modal
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  // 發帖子模態框的狀態
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
+  const [newPost, setNewPost] = useState({
+    title: '',
+    content: '',
+    image: '',
+    tags: ''
+  });
+  const [postSuccess, setPostSuccess] = useState(false);
   
   // Add random values state to avoid hydration mismatch
   const [likeCounts, setLikeCounts] = useState({});
@@ -160,23 +180,6 @@ export default function Home() {
   // ---- 恢復登入後需要的狀態 ----
   const [activeTab, setActiveTab] = useState('explore'); // 默認顯示探索
   
-  // AI Chat 狀態
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: '你好！上傳物品照片或描述你想處理的物品，我將幫你評估價值並找到最理想方式。' }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
-  const suggestions = [
-    '二手iPhone能賣多少錢？',
-    '如何回收舊電腦？',
-    '二手傢俱推薦',
-    '電子產品回收價值'
-  ];
-
   // 二手物品狀態
   const [scrapedProducts, setScrapedProducts] = useState([
     {
@@ -188,7 +191,8 @@ export default function Home() {
       platform: 'Carousell',
       location: '荃灣',
       image: 'https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=500',
-      url: '#'
+      url: '#',
+      category: '電子產品'
     },
     {
       id: 2,
@@ -199,7 +203,8 @@ export default function Home() {
       platform: 'Facebook',
       location: '觀塘',
       image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=500',
-      url: '#'
+      url: '#',
+      category: '電子產品'
     },
     {
       id: 3,
@@ -210,7 +215,8 @@ export default function Home() {
       platform: 'Carousell',
       location: '中環',
       image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500',
-      url: '#'
+      url: '#',
+      category: '電子產品'
     },
     {
       id: 4,
@@ -221,7 +227,8 @@ export default function Home() {
       platform: 'Facebook',
       location: '太古',
       image: 'https://images.unsplash.com/photo-1588423771073-b8903fbb85b5?w=500',
-      url: '#'
+      url: '#',
+      category: '電子產品'
     },
     {
       id: 5,
@@ -232,7 +239,8 @@ export default function Home() {
       platform: 'Carousell',
       location: '旺角',
       image: 'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=500',
-      url: '#'
+      url: '#',
+      category: '電子產品'
     },
     {
       id: 6,
@@ -243,11 +251,85 @@ export default function Home() {
       platform: 'Facebook',
       location: '將軍澳',
       image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500',
-      url: '#'
+      url: '#',
+      category: '電子產品'
+    },
+    {
+      id: 7,
+      title: 'IKEA MALM 書桌 橡木',
+      price: 550,
+      originalPrice: 899,
+      condition: '9成新',
+      platform: 'Carousell',
+      location: '大埔',
+      image: 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=500',
+      url: '#',
+      category: '家居用品'
+    },
+    {
+      id: 8,
+      title: 'MUJI 無印良品 單人沙發',
+      price: 1200,
+      originalPrice: 1999,
+      condition: '8成新',
+      platform: 'Facebook',
+      location: '沙田',
+      image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=500',
+      url: '#',
+      category: '家居用品'
+    },
+    {
+      id: 9,
+      title: 'Levi\'s 501 牛仔褲 30x32',
+      price: 280,
+      originalPrice: 650,
+      condition: '全新',
+      platform: 'Carousell',
+      location: '銅鑼灣',
+      image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500',
+      url: '#',
+      category: '時尚服飾'
+    },
+    {
+      id: 10,
+      title: 'Nike Air Force 1 白色 US9',
+      price: 550,
+      originalPrice: 899,
+      condition: '9成新',
+      platform: 'Facebook',
+      location: '旺角',
+      image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500',
+      url: '#',
+      category: '時尚服飾'
+    },
+    {
+      id: 11,
+      title: '哈利波特全集 繁體中文版',
+      price: 350,
+      originalPrice: 690,
+      condition: '9成新',
+      platform: 'Carousell',
+      location: '屯門',
+      image: 'https://images.unsplash.com/photo-1500697017927-99763262c802?w=500',
+      url: '#',
+      category: '書籍文具'
+    },
+    {
+      id: 12,
+      title: 'Canon EOS R6 無反相機',
+      price: 10800,
+      originalPrice: 15999,
+      condition: '95%新',
+      platform: 'Facebook',
+      location: '尖沙咀',
+      image: 'https://images.unsplash.com/photo-1502982720700-bfff97f2ecac?w=500',
+      url: '#',
+      category: '攝影器材'
     }
   ]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState('全部'); // Filter for products and bidding
+  const [activeFilter, setActiveFilter] = useState('全部'); // Filter for platform
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState('全部'); // Filter for category
 
   // 競價平台狀態
   const [activeBiddings, setActiveBiddings] = useState([
@@ -327,7 +409,6 @@ export default function Home() {
   });
   
   // Add login/register modal state
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -418,75 +499,13 @@ export default function Home() {
   // Handle login button click in header
   const handleLoginClick = () => {
     setShowAuthModal(true);
-    setAuthMode('login');
+    // The auth mode will be handled inside the modal itself
   };
 
   // 切換標籤
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
-
-  // Chat 函數
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      setUploadedImage(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      // 可選：添加圖片預覽動畫
-    }
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if ((!inputValue.trim() && !uploadedImage) || isLoading) return;
-    
-    const userMessage = {
-      role: 'user',
-      content: inputValue,
-      image: previewUrl
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
-
-    if (previewUrl) {
-      setUploadedImage(null);
-      setPreviewUrl(null);
-      if (fileInputRef.current) fileInputRef.current.value = null;
-    }
-
-    const assistantMessage = { role: 'assistant', content: '', isLoading: true };
-    setMessages(prev => [...prev, assistantMessage]);
-    
-    // 使用模擬回覆
-    setTimeout(() => {
-      let responseContent = '感謝您的訊息！請提供更多細節，或嘗試我們的推薦問題。'; // 默認回覆
-      // ... (可加入之前的模擬回覆邏輯)
-      setMessages(prev => prev.map((msg, i) => 
-        i === prev.length - 1 ? { ...msg, content: responseContent, isLoading: false } : msg
-      ));
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    setInputValue(suggestion);
-    // 觸發 handleSendMessage，但創建一個模擬事件對象
-    handleSendMessage({ preventDefault: () => {} }); 
-  };
-
-  // 自動滾動到聊天底部
-  useEffect(() => {
-    if (messages.length > 0 && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
 
   // Products 函數
   const calculateSavings = (price, originalPrice) => {
@@ -498,10 +517,11 @@ export default function Home() {
 
   const filteredProducts = scrapedProducts.filter(product => {
     const matchesSearch = product.title.toLowerCase().includes(productSearchTerm.toLowerCase());
-    const matchesFilter = activeFilter === '全部' || 
-                          (activeFilter === 'Carousell' && product.platform === 'Carousell') ||
-                          (activeFilter === 'Facebook' && product.platform === 'Facebook');
-    return matchesSearch && matchesFilter;
+    const matchesPlatformFilter = activeFilter === '全部' || 
+                      (activeFilter === 'Carousell' && product.platform === 'Carousell') ||
+                      (activeFilter === 'Facebook' && product.platform === 'Facebook');
+    const matchesCategoryFilter = activeCategoryFilter === '全部' || product.category === activeCategoryFilter;
+    return matchesSearch && matchesPlatformFilter && matchesCategoryFilter;
   });
 
   const sortedFilteredProducts = filteredProducts.sort((a, b) => {
@@ -512,56 +532,6 @@ export default function Home() {
     return percentB - percentA;
   });
   
-  // Bidding 函數
-  const handlePlaceBid = (biddingId) => {
-    if (!bidAmount[biddingId] || isNaN(bidAmount[biddingId])) return;
-    const amount = Number(bidAmount[biddingId]);
-    setActiveBiddings(prevBiddings => prevBiddings.map(bidding => {
-      if (bidding.id === biddingId && amount > bidding.currentBid) {
-        return {
-          ...bidding,
-          currentBid: amount,
-          bidCount: bidding.bidCount + 1,
-          bidders: [...bidding.bidders, { name: '您', amount, time: new Date().toISOString() }]
-        };
-      }
-      return bidding;
-    }));
-    setBidAmount({ ...bidAmount, [biddingId]: '' });
-  };
-  
-  const handleCreateBidding = () => {
-    if (!newBidding.title || !newBidding.startPrice || !newBidding.endTime) return;
-    const newBiddingObj = {
-      id: activeBiddings.length + 1,
-      title: newBidding.title,
-      description: newBidding.description,
-      image: 'https://images.unsplash.com/photo-1607435097405-db48f377bff7?w=500', // placeholder
-      startPrice: Number(newBidding.startPrice),
-      currentBid: Number(newBidding.startPrice),
-      bidCount: 0,
-      endTime: new Date(newBidding.endTime).toISOString(),
-      seller: { name: '您', avatar: 'https://i.pravatar.cc/150?img=20', rating: 5.0 },
-      bidders: []
-    };
-    setActiveBiddings([...activeBiddings, newBiddingObj]);
-    setNewBidding({ title: '', description: '', startPrice: '', endTime: '', category: '' });
-    setIsCreatingBidding(false);
-  };
-  
-  const formatTimeRemaining = (endTimeStr) => {
-    const endTime = new Date(endTimeStr);
-    const now = new Date();
-    const diff = endTime - now;
-    if (diff <= 0) return '已結束';
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    if (days > 0) return `${days}天 ${hours}小時`;
-    if (hours > 0) return `${hours}小時 ${minutes}分鐘`;
-    return `${minutes}分鐘`;
-  };
-
   // Product card animation effect
   useEffect(() => {
     if (isLoggedIn && activeTab === 'products' && filteredProducts.length > 0) {
@@ -747,7 +717,7 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1 text-gray-400">
-                      <path d="M9.653 16.915l-.005-.003-.019-.01a20.759 20.759 0 01-1.162-.682 22.045 22.045 0 01-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 018-2.828A4.5 4.5 0 0118 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 01-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 01-.69.001l-.002-.001z" />
+                      <path d="M9.653 16.915l-.005-.003-.019-.01a20.759 20.759 0 01-1.162-.682 22.045 22.045 0 01-2.582-1.9C4.045 12.733 2.25 10.352 2.25 7.5a4.5 4.5 0 018-2.828A4.5 4.5 0 0118 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 01-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 01-.69.001l-.002-.001z" />
                     </svg>
                     {likeCounts[`feed-${item.id}`] || 0}
                   </div>
@@ -766,100 +736,6 @@ export default function Home() {
       })}
     </div>
   );
-
-  // 修改二手物品卡片，添加點擊事件
-  const renderProductCards = () => {
-    return sortedFilteredProducts.map((product) => {
-      const savings = calculateSavings(product.price, product.originalPrice);
-      const isLiked = likedPosts[`product-${product.id}`];
-      
-      return (
-        <motion.div 
-          key={product.id}
-          ref={el => cardRefs.current[`product-${product.id}`] = el}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: product.id * 0.05, duration: 0.3 }}
-          className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm transition-all duration-300 product-card cursor-pointer"
-          onClick={() => handleCardClick(product, 'product')}
-        >
-          {/* 產品卡片內部結構 */}
-          <div className="aspect-[4/3] relative">
-            <img 
-              src={product.image} 
-              alt={product.title} 
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-2 left-2 bg-white rounded-full px-2 py-1 text-xs font-medium text-gray-900 shadow-sm flex items-center gap-1">
-              {product.platform === 'Carousell' ? (
-                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              )}
-              {product.platform}
-            </div>
-            <div className="absolute top-2 right-2 bg-indigo-600 rounded-full px-2 py-1 text-xs font-medium text-white shadow-sm">
-              {product.condition}
-            </div>
-            {isLiked && (
-              <div className="absolute bottom-2 left-2 bg-white rounded-full p-1 shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ef4444" className="w-4 h-4">
-                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                </svg>
-              </div>
-            )}
-            {savings && savings.percent >= 20 && (
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                <div className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-1 inline-flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 mr-1">
-                    <path fillRule="evenodd" d="M10 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 1zM5.05 3.05a.75.75 0 011.06 0l1.062 1.06a.75.75 0 11-1.061 1.061L5.05 4.11a.75.75 0 010-1.06zM15.95 3.05a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 01-1.062-1.06l1.061-1.06a.75.75 0 011.06 0zM3 10a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5A.75.75 0 013 10zm13.25-.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zM5.05 15.95a.75.75 0 010-1.06l1.06-1.061a.75.75 0 111.062 1.06l-1.061 1.06a.75.75 0 01-1.06 0zM15.95 15.95a.75.75 0 01-1.06 0l-1.06-1.06a.75.75 0 111.06-1.06l1.06 1.06a.75.75 0 010 1.06zM10 16.25a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
-                  </svg>
-                  最佳價格
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="p-2">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1">{product.title}</h3>
-              {product.platform === 'Carousell' && showPlatformComparison[`${product.platform}-${product.id}`] && (
-                <div className="ml-2 text-xs text-blue-600 whitespace-nowrap flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 mr-0.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                  FB更平
-                </div>
-              )}
-              {product.platform === 'Facebook' && showPlatformComparison[`${product.platform}-${product.id}`] && (
-                <div className="ml-2 text-xs text-orange-600 whitespace-nowrap flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 mr-0.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                  CL更平
-                </div>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="flex items-center">
-                  <span className="text-indigo-600 font-bold">HK${product.price}</span>
-                  {savings && (
-                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">
-                      省{savings.percent}%
-                    </span>
-                  )}
-                </div>
-                {product.originalPrice && (
-                  <div className="text-xs text-gray-500 line-through">HK${product.originalPrice}</div>
-                )}
-              </div>
-              <div className="text-xs text-gray-500">{product.location}</div>
-            </div>
-          </div>
-        </motion.div>
-      );
-    });
-  };
 
   // 在Home函數頂部添加這些狀態
   const [likedPosts, setLikedPosts] = useState({});
@@ -937,8 +813,503 @@ export default function Home() {
     }
   };
 
+  // 處理建立新帖子
+  const handleCreatePost = () => {
+    if (!newPost.title || !newPost.content) return;
+    
+    // 生成隨機圖片
+    const randomImageId = Math.floor(Math.random() * 1000);
+    const defaultImage = `https://picsum.photos/seed/${randomImageId}/500/300`;
+    
+    // 處理標籤
+    const tagList = newPost.tags 
+      ? newPost.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      : [];
+    
+    const newPostObj = {
+      id: Date.now(), // 使用時間戳作為臨時ID
+      title: newPost.title,
+      content: newPost.content,
+      image: newPost.image || defaultImage,
+      likes: 0,
+      comments: 0,
+      author: {
+        name: '我',
+        avatar: 'https://i.pravatar.cc/150?img=33'
+      },
+      tags: tagList,
+      createdAt: new Date()
+    };
+    
+    // 添加新帖子到現有列表的最前面
+    setFeedItems(prevItems => [newPostObj, ...prevItems]);
+    
+    // 顯示成功提示並在2秒後關閉模態框
+    setPostSuccess(true);
+    setTimeout(() => {
+      setPostSuccess(false);
+      setIsCreatingPost(false);
+      // 重置表單
+      setNewPost({
+        title: '',
+        content: '',
+        image: '',
+        tags: ''
+      });
+    }, 1500);
+  };
+
+  // 處理圖片上傳
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // 檢查文件大小，限制在2MB以內
+    if (file.size > 2 * 1024 * 1024) {
+      alert('圖片大小不能超過2MB');
+      return;
+    }
+    
+    // 檢查文件類型，只允許圖片格式
+    if (!file.type.startsWith('image/')) {
+      alert('只能上傳圖片文件');
+      return;
+    }
+    
+    // 使用FileReader將圖片轉換為Base64字符串
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewPost({...newPost, image: reader.result});
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // AI助理相關狀態
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [aiMessages, setAiMessages] = useState([
+    { role: 'assistant', content: '您好！我可以幫您估價二手物品、尋找最佳買家或回收商，或回答循環經濟相關問題。有什麼我能幫助您的嗎？' }
+  ]);
+  const [aiInputValue, setAiInputValue] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState([
+    '這個iPhone大概值多少錢？',
+    '如何最大化我的二手物品價值？',
+    '哪些平台適合賣家具？',
+    '回收和二手賣出哪個更划算？'
+  ]);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(true);
+  const [isPulsing, setIsPulsing] = useState(true);
+  const [aiPosition, setAiPosition] = useState({ right: 20, bottom: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [aiMinimized, setAiMinimized] = useState(false);
+  const messagesEndRef = useRef(null);
+  const aiContainerRef = useRef(null);
+
+  // AI建議上下文相關狀態 - 每個標籤頁顯示不同建議
+  useEffect(() => {
+    if (activeTab === 'products') {
+      setAiSuggestions([
+        '這個二手物品大概值多少？',
+        '如何判斷二手手機的品質？',
+        '哪種款式更保值？',
+        '推薦我一些高性價比的二手物品'
+      ]);
+    } else if (activeTab === 'bidding') {
+      setAiSuggestions([
+        '如何設定起標價格？',
+        '拍賣和一口價哪個更好？',
+        '如何增加競價物品的吸引力？',
+        '什麼時間結束競價最理想？'
+      ]);
+    } else if (activeTab === 'explore') {
+      setAiSuggestions([
+        '最近有什麼循環經濟新聞？',
+        '如何開始實踐永續生活？',
+        '舊物改造有什麼創意點子？',
+        '向我推薦環保相關的文章'
+      ]);
+    }
+    // 停止按鈕脈動效果
+    setTimeout(() => {
+      setIsPulsing(false);
+    }, 5000);
+  }, [activeTab]);
+
+  // 處理AI聊天滾動
+  useEffect(() => {
+    if (messagesEndRef.current && showAiAssistant) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [aiMessages, showAiAssistant]);
+
+  // 處理AI助理發送消息
+  const handleAiSendMessage = async (e) => {
+    e.preventDefault();
+    
+    if (!aiInputValue.trim() || isAiLoading) return;
+    
+    // 添加用戶消息
+    const userMessage = {
+      role: 'user',
+      content: aiInputValue
+    };
+    
+    setAiMessages(prev => [...prev, userMessage]);
+    setAiInputValue('');
+    setIsAiLoading(true);
+    
+    // 添加空的 AI 回應並顯示載入動畫
+    setAiMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '',
+      isLoading: true
+    }]);
+    
+    // 模擬 AI 回應延遲
+    setTimeout(() => {
+      // 根據不同內容生成不同回應
+      let aiResponse = '';
+      
+      if (aiInputValue.includes('價值') || aiInputValue.includes('價格') || aiInputValue.includes('值多少錢')) {
+        aiResponse = '根據最近市場數據，類似商品的二手價格約為原價的60-70%，具體取決於物品狀況、使用時間和市場需求。\n\n您可以在「二手物品」頁面查看類似產品的實時價格作為參考。';
+      } else if (aiInputValue.includes('如何') && (aiInputValue.includes('賣') || aiInputValue.includes('出售'))) {
+        aiResponse = '在SecondPrice平台上出售物品的步驟：\n1. 拍攝清晰的物品照片\n2. 填寫詳細描述，包括物品狀況、購買時間\n3. 設定合理價格（可參考平台上類似物品）\n4. 選擇配送方式\n5. 發布並回應買家查詢';
+      } else if (aiInputValue.includes('競價') || aiInputValue.includes('拍賣')) {
+        aiResponse = '成功競價的策略：\n1. 研究物品市場價值，設定心理價位\n2. 不要過早出價，觀察其他買家動向\n3. 接近結束時再出價\n4. 考慮使用奇數金額，如 $1,999 而非 $2,000\n5. 設置自動競價，但記得設上限';
+      } else {
+        aiResponse = '感謝您的提問！我是SecondPrice的AI助理，隨時為您提供二手交易、估價和競價相關幫助。\n\n您可以詢問我關於如何估算物品價值、選擇平台、提高售價或安全交易的建議。';
+      }
+      
+      // 更新 AI 回應
+      setAiMessages(prev => prev.map((msg, i) => 
+        i === prev.length - 1 ? { role: 'assistant', content: aiResponse } : msg
+      ));
+      
+      setIsAiLoading(false);
+      
+      // 根據當前頁面更新建議問題
+      setTimeout(() => {
+        // 更新建議問題
+        if (activeTab === 'products') {
+          setAiSuggestions([
+            '這款產品的二手市場價值是多少？',
+            '購買二手電子產品需要注意什麼？',
+            '如何判斷二手物品的品質好壞？'
+          ]);
+        } else if (activeTab === 'bidding') {
+          setAiSuggestions([
+            '什麼時候出價最合適？',
+            '如何避免競價過熱？',
+            '競價時如何評估物品真實價值？'
+          ]);
+        } else {
+          setAiSuggestions([
+            '二手奢侈品如何鑑別真偽？',
+            '哪類二手物品保值率最高？',
+            '如何安全進行二手交易？'
+          ]);
+        }
+        setShowAiSuggestions(true);
+      }, 1000);
+    }, 1500);
+  };
+
+  // 處理AI建議點擊
+  const handleAiSuggestionClick = (suggestion) => {
+    setAiInputValue(suggestion);
+    handleAiSendMessage({ preventDefault: () => {} });
+  };
+  
+  // 處理AI消息內容格式化，支持換行
+  const formatAiMessageContent = (content) => {
+    if (!content) return '';
+    return content.split('\n').map((line, i) => (
+      <React.Fragment key={i}>
+        {line}
+        {i < content.split('\n').length - 1 && <br />}
+      </React.Fragment>
+    ));
+  };
+
+  // 處理AI對話框拖動
+  const handleDragStart = (e) => {
+    if (aiContainerRef.current && !aiMinimized) {
+      setIsDragging(true);
+      setDragStart({ 
+        x: e.clientX, 
+        y: e.clientY 
+      });
+      // 阻止其他事件
+      e.preventDefault();
+    }
+  };
+
+  const handleDrag = (e) => {
+    if (isDragging && aiContainerRef.current) {
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      
+      // 計算新位置，確保不超出屏幕邊界
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const containerWidth = aiContainerRef.current.offsetWidth;
+      const containerHeight = aiContainerRef.current.offsetHeight;
+      
+      let newRight = aiPosition.right - dx;
+      let newBottom = aiPosition.bottom - dy;
+      
+      // 確保不超出屏幕
+      newRight = Math.max(10, Math.min(newRight, viewportWidth - containerWidth - 10));
+      newBottom = Math.max(10, Math.min(newBottom, viewportHeight - containerHeight - 10));
+
+      setAiPosition({ right: newRight, bottom: newBottom });
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  // 添加事件監聽器
+  useEffect(() => {
+    if (showAiAssistant) {
+      window.addEventListener('mousemove', handleDrag);
+      window.addEventListener('mouseup', handleDragEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleDrag);
+        window.removeEventListener('mouseup', handleDragEnd);
+      };
+    }
+  }, [isDragging, dragStart, showAiAssistant]);
+
+  // 標籤頁列表
+  const tabs = [
+    { key: 'follow', label: '關注' },
+    { key: 'explore', label: '探索' },
+    { key: 'products', label: '二手平台' },
+    { key: 'cards', label: '收藏卡牌' },  // 新增卡牌標籤
+    { key: 'bidding', label: '競價' },
+  ];
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [bidItems, setBidItems] = useState([]);
+  const [followed, setFollowed] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [priceFilter, setPriceFilter] = useState('all');
+
+  // Add a toast notification state
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  
+  // Function to show toast notification
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => {
+      setToast({ visible: false, message: '', type: 'success' });
+    }, 2000);
+  };
+
+  // 添加收藏功能
+  const toggleFavorite = (productId) => {
+    if (!isLoggedIn) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    if (favorites.includes(productId)) {
+      setFavorites(prev => prev.filter(id => id !== productId));
+      showToast('已從收藏中移除', 'info'); // Use our custom toast instead of antd message
+    } else {
+      setFavorites(prev => [...prev, productId]);
+      showToast('已加入收藏', 'success'); // Use our custom toast instead of antd message
+    }
+  };
+
+  const isFavorited = (productId) => {
+    return favorites.includes(productId);
+  };
+
+  // 處理語言切換
+  const toggleLanguage = () => {
+    setLanguage(prevLang => prevLang === 'zh-HK' ? 'en' : 'zh-HK');
+  };
+
+  // 更新 AI 建議問題，確保使用中文
+  const updateAiSuggestions = (tab) => {
+    if (tab === 'products' || activeTab === 'products') {
+      setAiSuggestions([
+        '如何估算這款電子產品的二手價值？',
+        '哪些因素會影響二手物品的價格？',
+        '這個價格合理嗎？',
+        '二手物品交易需要注意什麼？',
+        '如何辨別產品的真偽？'
+      ]);
+    } else if (tab === 'bidding' || activeTab === 'bidding') {
+      setAiSuggestions([
+        '如何制定競價策略？',
+        '這個起標價合理嗎？',
+        '競價時應該設置怎樣的價格上限？',
+        '什麼物品適合競價？',
+        '競價成功的關鍵因素是什麼？'
+      ]);
+    } else {
+      setAiSuggestions([
+        '如何估算我的二手物品價值？',
+        '哪個平台最適合賣我的物品？',
+        '如何提高二手物品的售價？',
+        '回收和轉售哪個更划算？',
+        '如何安全地進行二手交易？'
+      ]);
+    }
+    setShowAiSuggestions(true);
+  };
+
+  // 獲取產品分類列表
+  const productCategories = ['全部', ...Array.from(new Set(scrapedProducts.map(product => product.category)))];
+
+  // 添加收藏卡牌數據
+  const [collectionCards, setCollectionCards] = useState([
+    {
+      id: 1,
+      title: 'Charizard GX 噴火龍 (彩虹稀有)',
+      price: 12800,
+      originalPrice: null,
+      condition: 'PSA 10',
+      platform: 'Yahoo拍賣',
+      location: '旺角',
+      image: 'https://images.unsplash.com/photo-1605148230176-e2e86fc3b494?w=500',
+      category: 'Pokemon',
+      rarity: '彩虹稀有',
+      year: 2019,
+      language: '日文',
+      description: '稀有噴火龍GX彩虹卡，PSA 10評級完美狀態，完美的投資收藏品。'
+    },
+    {
+      id: 2,
+      title: 'Pikachu V-Union 皮卡丘 (特別收藏)',
+      price: 3200,
+      originalPrice: 4500,
+      condition: 'PSA 9',
+      platform: 'Carousell',
+      location: '銅鑼灣',
+      image: 'https://images.unsplash.com/photo-1613771404721-1f92d799e49f?w=500',
+      category: 'Pokemon',
+      rarity: '特別版',
+      year: 2021,
+      language: '英文',
+      description: '限量版皮卡丘V-Union卡組，四張卡片組成一個大型藝術畫，狀態良好，PSA 9評級。'
+    },
+    {
+      id: 3,
+      title: 'Kobe Bryant Rookie Card 簽名版',
+      price: 75000,
+      originalPrice: null,
+      condition: 'BGS 9.5',
+      platform: '私人收藏',
+      location: '中環',
+      image: 'https://images.unsplash.com/photo-1608245449230-4ac19066d2d0?w=500',
+      category: '籃球卡',
+      rarity: '簽名新人卡',
+      year: 1996,
+      language: '英文',
+      description: 'Kobe Bryant 1996-97 Topps Chrome 新人卡親筆簽名版，BGS 9.5超高評級，極其稀有。'
+    },
+    {
+      id: 4,
+      title: 'LeBron James Prizm 平行閃卡',
+      price: 23000,
+      originalPrice: 27500,
+      condition: 'PSA 9',
+      platform: 'Yahoo拍賣',
+      location: '尖沙咀',
+      image: 'https://images.unsplash.com/photo-1574975544222-0d94930f28e3?w=500',
+      category: '籃球卡',
+      rarity: '平行閃卡',
+      year: 2020,
+      language: '英文',
+      description: '2020 Panini Prizm LeBron James 銀色平行閃卡，PSA 9評級，品相極佳，投資價值高。'
+    },
+    {
+      id: 5,
+      title: 'Lionel Messi Rookie Card',
+      price: 45000,
+      originalPrice: null,
+      condition: 'PSA 8',
+      platform: 'Facebook',
+      location: '觀塘',
+      image: 'https://images.unsplash.com/photo-1553481187-be93c21490a9?w=500',
+      category: '足球卡',
+      rarity: '新人卡',
+      year: 2004,
+      language: '西班牙文',
+      description: '稀有梅西2004年新人卡，PSA 8評級，良好品相，值得投資收藏。'
+    },
+    {
+      id: 6,
+      title: 'Cristiano Ronaldo Autographed Card',
+      price: 38000,
+      originalPrice: 42000,
+      condition: 'BGS 9',
+      platform: 'Carousell',
+      location: '太古',
+      image: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500',
+      category: '足球卡',
+      rarity: '簽名卡',
+      year: 2018,
+      language: '英文',
+      description: 'Cristiano Ronaldo 2018 Panini 親筆簽名卡，BGS 9高評級，全球限量100張。'
+    },
+    {
+      id: 7,
+      title: 'Magic The Gathering Black Lotus',
+      price: 350000,
+      originalPrice: null,
+      condition: 'CGC 9',
+      platform: '私人收藏',
+      location: '中環',
+      image: 'https://images.unsplash.com/photo-1528143358888-6d3c7f67bd5d?w=500',
+      category: '遊戲王',
+      rarity: 'Alpha版',
+      year: 1993,
+      language: '英文',
+      description: '傳奇的Alpha版Black Lotus卡，CGC 9評級，萬智牌中最具收藏價值的卡片之一。'
+    },
+    {
+      id: 8,
+      title: 'Yu-Gi-Oh! Blue-Eyes White Dragon',
+      price: 18500,
+      originalPrice: 22000,
+      condition: 'PSA 10',
+      platform: 'Yahoo拍賣',
+      location: '旺角',
+      image: 'https://images.unsplash.com/photo-1627131597135-1cb0abdc3568?w=500',
+      category: '遊戲王',
+      rarity: '初版',
+      year: 2002,
+      language: '日文',
+      description: '初版青眼白龍，PSA 10完美評級，遊戲王收藏中的經典卡片。'
+    }
+  ]);
+
+  const [cardSearchTerm, setCardSearchTerm] = useState('');
+  const [activeCardFilter, setActiveCardFilter] = useState('全部'); // 卡牌類型篩選
+
+  // 添加卡牌過濾邏輯
+  const filteredCards = collectionCards.filter(card => {
+    const matchesSearch = card.title.toLowerCase().includes(cardSearchTerm.toLowerCase()) || 
+                          card.description.toLowerCase().includes(cardSearchTerm.toLowerCase());
+    const matchesCategoryFilter = activeCardFilter === '全部' || card.category === activeCardFilter;
+    return matchesSearch && matchesCategoryFilter;
+  });
+
+  // 獲取卡牌類別列表
+  const cardCategories = ['全部', ...Array.from(new Set(collectionCards.map(card => card.category)))];
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
       <Head>
         <title>SecondPrice.hk - 循環經濟平台</title>
         <meta name="description" content="透過AI技術估算物品價值，快速匹配二手買家或回收商" />
@@ -948,21 +1319,59 @@ export default function Home() {
       </Head>
 
       {/* 統一的頂部導航 */}
-      <header className="sticky top-0 z-50 bg-white py-3 px-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-md flex items-center justify-center text-white font-bold text-sm">
+      <header className="sticky top-0 z-40 bg-white py-3 px-4 md:px-6 border-b border-gray-100 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
               SP
             </div>
-            <h1 className="text-gray-900 font-semibold">SecondPrice.hk</h1>
+            <h1 className="text-gray-900 font-semibold hidden sm:block">SecondPrice.hk</h1>
+          </div>
+          
+          {/* 中央搜索欄 */}
+          <div className="hidden md:block relative max-w-md w-full mx-4">
+            <input
+              type="text"
+              placeholder={language === 'zh-HK' ? "搜索二手物品、競價或文章..." : "Search for second-hand items, auctions or articles..."}
+              className="w-full bg-gray-100 border border-gray-200 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+            />
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </div>
           </div>
           
         <div className="flex items-center gap-3">
-          {/* 搜索按鈕 */}
-          <button className="p-2 rounded-full hover:bg-gray-100">
+          {/* 只在移動端顯示的搜索按鈕 */}
+          <button className="md:hidden p-2 rounded-full hover:bg-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            </button>
+          </button>
+          
+          {/* 語言切換按鈕 */}
+          <button 
+            onClick={toggleLanguage}
+            className="p-2 rounded-full hover:bg-gray-100 flex items-center"
+          >
+            <span className="text-sm font-medium mr-1">{language === 'zh-HK' ? '繁' : 'EN'}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+            </svg>
+          </button>
+          
+          {/* 通知按鈕 - 登入後顯示 */}
+          {isLoggedIn && (
+            <div className="relative">
+              <button className="p-2 rounded-full hover:bg-gray-100 relative">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                </svg>
+                {/* 通知提示點 */}
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+            </div>
+          )}
           
           {/* 登入/用戶頭像按鈕 */}
           {!isLoggedIn ? (
@@ -972,37 +1381,72 @@ export default function Home() {
                   setShowAuthModal(true);
                   setAuthMode('register');
                 }}
-                className="px-3 py-1.5 text-sm font-medium bg-white text-indigo-600 border border-indigo-600 rounded-full hover:bg-indigo-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-white text-indigo-600 border border-indigo-600 rounded-full hover:bg-indigo-50 transition-colors"
               >
               註冊
             </button>
               <button 
                 onClick={handleLoginClick}
-                className="px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm"
               >
                 登入
               </button>
             </>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-              <img src="https://i.pravatar.cc/150?img=33" alt="用戶頭像" className="w-full h-full object-cover" />
+            <div className="relative group">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-300 to-purple-300 p-0.5 cursor-pointer">
+                <img src="https://i.pravatar.cc/150?img=33" alt="用戶頭像" className="w-full h-full object-cover rounded-full" />
+              </div>
+              
+              {/* 下拉菜單 */}
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 hidden group-hover:block z-50">
+                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  個人檔案
+                </a>
+                <a href="/favorites" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  我的收藏
+                </a>
+                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  我的物品
+                </a>
+                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  設定
+                </a>
+                <div className="border-t border-gray-100 my-1"></div>
+                <button 
+                  onClick={() => setIsLoggedIn(false)} 
+                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                >
+                  登出
+                </button>
+              </div>
             </div>
           )}
           </div>
         </header>
 
-      {/* 主體內容 */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      {/* 主體內容 - 使用flex-grow確保主內容區域佔據所有可用空間，並將頁腳推到底部 */}
+      <main className="flex-grow max-w-7xl mx-auto px-4 md:px-6 py-6 w-full">
         {!isLoggedIn ? (
           // ---- 未登入狀態：瀑布流 ----
           <>
             {/* 移除之前的標籤欄，換成標題說明 */}
             <div className="mb-6 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">為您推薦的內容</h2>
+              <h2 className="text-lg font-medium text-gray-900 flex items-center">
+                為您推薦的內容
+                <div className="group relative ml-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400 cursor-help">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                  </svg>
+                  <div className="absolute left-0 bottom-full mb-2 w-60 bg-gray-800 text-white p-2 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    基於瀏覽用戶的興趣和平台熱門內容自動推薦，登入後可獲得更個性化的內容
+                  </div>
+                </div>
+              </h2>
               <div className="text-xs text-gray-500 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1 text-indigo-600">
                   <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
-        </svg>
+                </svg>
                 根據您的興趣自動生成
               </div>
             </div>
@@ -1018,25 +1462,60 @@ export default function Home() {
         ) : (
           // ---- 已登入狀態：多標籤界面 ----
           <>
-            {/* 標籤導航 */}
+            {/* 麵包屑導航 */}
+            <div className="text-xs text-gray-500 mb-4 flex items-center">
+              <span className="text-indigo-600">首頁</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mx-1">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">{activeTab === 'explore' ? '探索' : activeTab === 'products' ? '二手物品' : activeTab === 'bidding' ? '競價平台' : '關注'}</span>
+            </div>
+            
+            {/* 標籤導航 - 改進樣式 */}
             <div className="flex border-b border-gray-200 mb-6">
               {[
-                { key: 'follow', label: '關注' }, 
-                { key: 'explore', label: '探索' }, 
-                { key: 'products', label: '二手物品' },
-                { key: 'bidding', label: '競價平台' }, 
-                { key: 'chat', label: 'AI 助理' }
+                { key: 'follow', label: '關注', icon: 
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                }, 
+                { key: 'explore', label: '探索', icon:
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                  </svg>
+                },
+                { key: 'favorites', label: '收藏', icon:
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  </svg>
+                },
+                { key: 'products', label: '二手物品', icon:
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                },
+                { key: 'cards', label: '收藏卡牌', icon:
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                  </svg>
+                },
+                { key: 'bidding', label: '競價平台', icon:
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                  </svg>
+                }
               ].map(tab => (
             <button 
                   key={tab.key}
                   onClick={() => handleTabChange(tab.key)}
               className={cn(
-                "pb-3 px-4 text-sm font-medium relative",
+                "pb-3 px-5 text-sm font-medium relative flex items-center transition-colors",
                     activeTab === tab.key
                       ? 'text-indigo-600 font-semibold' 
                   : 'text-gray-500 hover:text-gray-700'
               )}
             >
+                  {tab.icon}
                   {tab.label}
                   {activeTab === tab.key && (
                 <motion.div 
@@ -1058,379 +1537,644 @@ export default function Home() {
                 transition={{ duration: 0.2 }}
               >
                 {activeTab === 'follow' && (
-                  <div className="text-center py-16 text-gray-500">
-                    關注功能開發中...
+                  <div className="bg-gray-50 rounded-xl p-12 text-center flex flex-col items-center justify-center border border-gray-200">
+                    <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-indigo-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">關注功能即將推出</h3>
+                    <p className="text-gray-500 max-w-md mb-6">您可以關注感興趣的賣家、循環經濟話題，或二手物品類別，以獲取個人化更新。</p>
+                    <button className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors font-medium">
+                      獲取功能推出通知
+                    </button>
                   </div>
                 )}
 
                 {activeTab === 'explore' && (
                   <>
-                    {renderFeedCards()} {/* 複用瀑布流渲染函數 */}
+                    {/* 添加發帖子按鈕 */}
+                    <div className="relative mb-4">
+                      <div className="flex justify-between items-center">
+                        <h2 className="font-medium text-gray-900">探索文章</h2>
+                        <button 
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors flex items-center shadow-md"
+                          onClick={() => setIsCreatingPost(true)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                          </svg>
+                          發帖子
+                        </button>
+                      </div>
+                    </div>
+                    {/* {renderFeedCards()} */}{/* Replace with ExploreFeed component */} 
+                    <ExploreFeed 
+                      items={feedItems} 
+                      onCardClick={handleCardClick}
+                      cardRefs={cardRefs}
+                      likedPosts={likedPosts}
+                      comments={comments}
+                      likeCounts={likeCounts}
+                      commentCounts={commentCounts}
+                      viewCounts={viewCounts}
+                    /> 
                     <div className="flex justify-center mt-8">
                       <button className="px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-600 rounded-full hover:bg-indigo-50 transition-colors">
                         查看更多
-            </button>
+                      </button>
                     </div>
+                    
+                    {/* 浮動發帖子按鈕 */}
+                    <motion.button
+                      className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-10 hover:bg-indigo-700 transition-colors"
+                      onClick={() => setIsCreatingPost(true)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                    </motion.button>
                   </>
                 )}
 
               {activeTab === 'products' && (
-                  <div className="space-y-3">
-                    {/* ... 二手物品列表和篩選 ... */} 
-                    <div className="flex justify-between items-center">
-                      <h2 className="font-medium text-gray-900">爬取的二手物品 ({sortedFilteredProducts.length})</h2>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1 text-indigo-600">
-                          <path fillRule="evenodd" d="M2.5 3A1.5 1.5 0 001 4.5v4A1.5 1.5 0 002.5 10h6A1.5 1.5 0 0010 8.5v-4A1.5 1.5 0 008.5 3h-6zm11 2A1.5 1.5 0 0012 6.5v7a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5v-7A1.5 1.5 0 0019.5 5h-6z" clipRule="evenodd" />
-                        </svg>
-                        價格比較已啟用
-                      </div>
-                    </div>
-                    {/* 搜索和篩選 */}
-                    <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                       <div className="relative flex-grow">
-                        <input
-                          type="text"
-                          value={productSearchTerm}
-                          onChange={(e) => setProductSearchTerm(e.target.value)}
-                          placeholder="搜索二手物品..."
-                          className="w-full px-4 py-2 rounded-full bg-gray-100 text-gray-900 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-gray-500 text-sm"
-                        />
-                        <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                  <>
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-medium text-gray-900">二手物品</h2>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="搜索物品..."
+                            value={productSearchTerm}
+                            onChange={(e) => setProductSearchTerm(e.target.value)}
+                            className="bg-gray-100 border border-gray-200 rounded-full py-1.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white w-full md:w-60"
+                          />
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                           </svg>
-            </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        {['全部', 'Carousell', 'Facebook'].map((filter) => (
-            <button 
-                            key={filter}
-                            onClick={() => setActiveFilter(filter)} // 共用 activeFilter 狀態
-              className={cn(
-                              "px-3 py-1.5 text-xs rounded-full transition-colors",
-                              activeFilter === filter
-                                ? "bg-indigo-600 text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            )}
+
+                      {/* 平台和分類過濾器 */}
+                      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-500 mb-1.5">平台</span>
+                          <div className="flex space-x-2">
+                            {['全部', 'Carousell', 'Facebook'].map(filter => (
+                              <button
+                                key={`platform-${filter}`}
+                                onClick={() => setActiveFilter(filter)}
+                                className={`px-3 py-1.5 text-xs rounded-full ${
+                                  activeFilter === filter 
+                                    ? 'bg-indigo-100 text-indigo-700 font-medium' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {filter}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-500 mb-1.5">分類</span>
+                          <div className="flex flex-wrap gap-2">
+                            {productCategories.map(category => (
+                              <button
+                                key={`category-${category}`}
+                                onClick={() => setActiveCategoryFilter(category)}
+                                className={`px-3 py-1.5 text-xs rounded-full ${
+                                  activeCategoryFilter === category 
+                                    ? 'bg-indigo-100 text-indigo-700 font-medium' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {category}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 顯示篩選結果數量 */}
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="text-sm text-gray-500">
+                          {filteredProducts.length} 項結果 {activeCategoryFilter !== '全部' ? `- ${activeCategoryFilter}` : ''}
+                        </p>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">排序:</span>
+                          <select className="text-xs border rounded-md px-2 py-1 bg-white">
+                            <option>價格低至高</option>
+                            <option>價格高至低</option>
+                            <option>最新上架</option>
+                            <option>最高折扣</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AI智能洞察區域 */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-6">
+                      <div className="flex items-start mb-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center mr-3">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">AI智能洞察</h3>
+                          <p className="text-xs text-gray-600">根據最近二手市場數據分析</p>
+                        </div>
+                      </div>
+                      
+                      <div className="ml-12">
+                        <p className="text-sm text-gray-700 mb-3">
+                          {activeCategoryFilter === '電子產品' 
+                            ? '電子產品二手價格正處於下降趨勢，iPhone 13系列和高階筆電保值率最高。' 
+                            : activeCategoryFilter === '家居用品'
+                            ? '無印良品和IKEA的二手家居商品近期需求上升，平均成交價格比新品低40%。'
+                            : activeCategoryFilter === '時尚服飾'
+                            ? '限量球鞋和高級成衣在二手市場保值率高，部分款式甚至溢價交易。'
+                            : activeCategoryFilter === '書籍文具'
+                            ? '教科書和限量版書籍在二手市場最受歡迎，價格約為原價的50-60%。'
+                            : activeCategoryFilter === '攝影器材'
+                            ? '高階相機鏡頭保值率高於機身，成色良好的專業鏡頭可保留70%以上價值。'
+                            : '二手電子產品交易量最大，其中手機和筆電最熱門。限量款運動鞋價格持續上漲。'}
+                        </p>
+                        
+                        <div className="flex space-x-2 text-xs">
+                          <button className="px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors text-gray-700">
+                            查看完整市場分析
+                          </button>
+                          <button className="px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors text-gray-700">
+                            設置價格提醒
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 產品卡片網格 */}
+                    {filteredProducts.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {sortedFilteredProducts.map((product) => (
+                          <motion.div
+                            key={product.id}
+                            ref={el => cardRefs.current[`product-${product.id}`] = el}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                            className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all product-card cursor-pointer relative group"
+                            onClick={() => handleCardClick(product, 'product')}
                           >
-                            {filter}
-            </button>
+                            {/* 分類標籤 */}
+                            <div className="absolute top-2 left-2 z-10">
+                              <span className="text-xs px-2 py-0.5 bg-black/60 text-white rounded-full backdrop-blur-sm">
+                                {product.category}
+                              </span>
+                            </div>
+                            
+                            {/* 收藏按鈕 */}
+                            <button
+                              className="absolute top-2 right-2 z-10 p-1.5 bg-white/70 backdrop-blur-sm rounded-full shadow hover:bg-white transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(product.id);
+                              }}
+                            >
+                              {isFavorited(product.id) ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ef4444" className="w-4 h-4">
+                                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                </svg>
+                              )}
+                            </button>
+                            
+                            {/* 圖片部分 */}
+                            <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                              <img 
+                                src={product.image} 
+                                alt={product.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                              />
+                              <div className="absolute bottom-2 left-2">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  product.platform === 'Carousell' 
+                                    ? 'bg-orange-500/90 text-white' 
+                                    : 'bg-blue-500/90 text-white'
+                                } backdrop-blur-sm`}>
+                                  {product.platform}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="p-3">
+                              <h3 className="font-medium text-sm mb-1 line-clamp-2">{product.title}</h3>
+                              <div className="flex justify-between items-center mt-2">
+                                <div>
+                                  <div className="text-indigo-600 font-bold">HK${product.price}</div>
+                                  {product.originalPrice && (
+                                    <div className="text-xs text-gray-500 line-through">HK${product.originalPrice}</div>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500">{product.location}</div>
+                              </div>
+                              
+                              {/* 條件標籤 */}
+                              <div className="mt-2 flex justify-between items-center">
+                                <span className="text-xs py-0.5 px-2 bg-gray-100 text-gray-600 rounded-full">
+                                  {product.condition}
+                                </span>
+                                
+                                {/* AI估價 */}
+                                <span className="text-xs text-indigo-600 flex items-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 mr-0.5">
+                                    <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                                    <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                  </svg>
+                                  AI估價
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
                         ))}
-          </div>
-                    </div>
-                    {/* 產品網格 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {renderProductCards()}
-                    </div>
-                    {filteredProducts.length === 0 && (
-                      <div className="bg-gray-100 rounded-lg p-8 text-center text-gray-500">
-                        沒有找到相關的二手物品
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-12 text-center">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-gray-400">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">找不到匹配的物品</h3>
+                        <p className="text-gray-500 max-w-md mx-auto mb-6">
+                          嘗試更改搜索條件或分類過濾器，以查找更多二手物品。
+                        </p>
+                        <button 
+                          onClick={() => {
+                            setProductSearchTerm('');
+                            setActiveFilter('全部');
+                            setActiveCategoryFilter('全部');
+                          }}
+                          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors font-medium"
+                        >
+                          清除所有過濾條件
+                        </button>
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {activeTab === 'bidding' && (
-                <div className="space-y-4">
-                    {/* ... 競價平台列表和篩選 ... */}
-                  <div className="flex justify-between items-center">
-                    <h2 className="font-medium text-gray-900">競價平台 ({activeBiddings.length})</h2>
-                    <button 
-                      onClick={() => setIsCreatingBidding(true)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-full text-xs font-medium hover:bg-indigo-700 transition-colors"
+                  <div className="space-y-4">
+                    {/* AI競價策略建議元素 */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100 mb-3"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                      </svg>
-                      建立競價
-                    </button>
-                  </div>
-                    {/* 篩選 */}
-                  <div className="flex gap-2 mb-4">
-                    {['全部', '電子產品', '時尚服飾', '遊戲娛樂'].map((category) => (
-                      <button
-                        key={category}
-                          onClick={() => setActiveFilter(category)} // 共用 activeFilter
-                        className={cn(
-                          "px-3 py-1.5 text-xs rounded-full transition-colors",
-                          activeFilter === category
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        )}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                    {/* 競價列表 */}
-                  <div className="space-y-3">
-                    {activeBiddings
-                        .filter(bidding => activeFilter === '全部' || true) // TODO: Implement actual category filtering
-                      .map((bidding) => (
-                      <motion.div
-                        key={bidding.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: bidding.id * 0.05, duration: 0.3 }}
-                        className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm"
-                      >
-                          {/* ... 競價卡片內部結構 ... */}
-                        <div className="flex flex-col md:flex-row">
-                          <div className="md:w-1/3 aspect-square md:aspect-auto relative">
-                            <img 
-                              src={bidding.image} 
-                              alt={bidding.title} 
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-2 left-2 bg-green-500 rounded-full px-2 py-1 text-xs font-medium text-white shadow-sm">
-                              全新
-                            </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white flex-shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-medium text-indigo-900">AI 競價策略師</h3>
+                            <button 
+                              onClick={() => setShowAiAssistant(true)}
+                              className="text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-full hover:bg-indigo-700 transition-colors flex items-center space-x-1"
+                            >
+                              <span>AI建議</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                              </svg>
+                            </button>
                           </div>
-                          <div className="p-4 flex flex-col flex-grow">
-                            <div className="flex justify-between mb-2">
-                              <h3 className="font-bold text-gray-900">{bidding.title}</h3>
-                              <div className="flex items-center text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
-                                </svg>
-                                剩餘 {formatTimeRemaining(bidding.endTime)}
+                          <p className="text-sm text-indigo-800 mt-1">當前競價分析：電子產品競價活躍度最高，週末結標的物品平均獲得<span className="font-semibold">23%</span>更高的最終價格。設定合理起標價可吸引更多競標者。</p>
+                          <div className="mt-3 flex gap-2 flex-wrap">
+                            <button 
+                              className="px-3 py-1 bg-white rounded-full text-xs text-indigo-700 border border-indigo-200 hover:bg-indigo-50 transition-colors shadow-sm"
+                              onClick={() => {
+                                setAiInputValue("我的競價物品如何設定起價？");
+                                setShowAiAssistant(true);
+                                handleAiSendMessage({ preventDefault: () => {} });
+                              }}
+                            >
+                              獲取定價建議
+                            </button>
+                            <button 
+                              className="px-3 py-1 bg-white rounded-full text-xs text-indigo-700 border border-indigo-200 hover:bg-indigo-50 transition-colors shadow-sm"
+                              onClick={() => {
+                                setAiInputValue("哪些因素影響競價成功率？");
+                                setShowAiAssistant(true);
+                                handleAiSendMessage({ preventDefault: () => {} });
+                              }}
+                            >
+                              提高競價成功率
+                            </button>
+                            <button 
+                              className="px-3 py-1 bg-white rounded-full text-xs text-indigo-700 border border-indigo-200 hover:bg-indigo-50 transition-colors shadow-sm"
+                              onClick={() => {
+                                setAiInputValue("我的物品適合競價嗎？");
+                                setShowAiAssistant(true);
+                                handleAiSendMessage({ preventDefault: () => {} });
+                              }}
+                            >
+                              競價適合度評估
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                    
+                    <BiddingSection initialBiddings={activeBiddings} /> {/* Render BiddingSection */}
+                  </div>
+                )}
+
+                {activeTab === 'favorites' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold text-gray-800">我的收藏</h2>
+                      <span className="text-sm text-gray-500">共 {favorites.length} 個收藏項目</span>
+                    </div>
+                    
+                    {favorites.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {scrapedProducts
+                          .filter(product => favorites.includes(product.id))
+                          .map(product => (
+                            <div
+                              key={product.id}
+                              className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
+                              onClick={() => handleCardClick(product, 'product')}
+                            >
+                              <div className="relative">
+                                <img
+                                  src={product.image || "https://via.placeholder.com/300x200?text=No+Image"}
+                                  alt={product.title}
+                                  className="w-full h-48 object-cover"
+                                  onError={(e) => {
+                                    e.target.src = "https://via.placeholder.com/300x200?text=Invalid+Image";
+                                  }}
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite(product.id);
+                                  }}
+                                  className="absolute top-2 right-2 bg-white bg-opacity-70 rounded-full p-1.5 
+                                            hover:bg-opacity-100 transition-all z-10"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" 
+                                      className="w-5 h-5 text-red-500">
+                                    <path fillRule="evenodd" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" 
+                                      clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                                {product.condition && (
+                                  <span className="absolute top-2 left-2 px-2 py-1 text-xs font-semibold bg-white bg-opacity-80 rounded-full">
+                                    {product.condition}
+                                  </span>
+                                )}
                               </div>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{bidding.description}</p>
-                            <div className="flex justify-between mb-4">
-                              <div>
-                                <div className="text-sm text-gray-500">目前出價</div>
-                                <div className="text-xl font-bold text-indigo-600">HK${bidding.currentBid}</div>
-                                <div className="text-xs text-gray-500">起標價: HK${bidding.startPrice}</div>
-                              </div>
-                              <div>
-                                <div className="text-sm text-gray-500">出價次數</div>
-                                <div className="text-xl font-bold text-gray-900">{bidding.bidCount}</div>
-                              </div>
-                            </div>
-                            <div className="mt-auto">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full overflow-hidden">
-                                      <img src={bidding.seller.avatar} alt={bidding.seller.name} className="w-full h-full object-cover"/>
+                              <div className="p-4">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-1">{product.title}</h3>
+                                <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center">
+                                    <span className="text-red-600 font-semibold">HK${product.price}</span>
+                                    {product.originalPrice && (
+                                      <span className="text-gray-400 text-sm line-through ml-2">
+                                        HK${product.originalPrice}
+                                      </span>
+                                    )}
                                   </div>
-                                  <span className="text-xs text-gray-700">{bidding.seller.name}</span>
-                                  <div className="flex items-center text-xs text-gray-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-yellow-400">
-                                      <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="ml-1">{bidding.seller.rating}</span>
+                                  <div className="text-sm text-gray-500">
+                                    {product.location}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
-                                <input
-                                  type="number"
-                                  value={bidAmount[bidding.id] || ''}
-                                  onChange={(e) => setBidAmount({...bidAmount, [bidding.id]: e.target.value})}
-                                  placeholder={`HK$${bidding.currentBid + 100}或更高`}
-                                  className="flex-grow rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                                  min={bidding.currentBid + 1}
-                                />
-                                <button
-                                  onClick={() => handlePlaceBid(bidding.id)}
-                                  disabled={!bidAmount[bidding.id] || Number(bidAmount[bidding.id]) <= bidding.currentBid}
-                                  className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium",
-                                    (!bidAmount[bidding.id] || Number(bidAmount[bidding.id]) <= bidding.currentBid)
-                                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                      : "bg-indigo-600 text-white hover:bg-indigo-700"
-                                  )}
-                                >
-                                  出價
-                                </button>
-                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                  {activeBiddings.filter(bidding => activeFilter === '全部' || true).length === 0 && (
-                      <div className="bg-gray-100 rounded-lg p-8 text-center text-gray-500">
-                        沒有進行中的競價
-                    </div>
-                  )}
-                    {/* 創建競價模態框 */} 
-                  {isCreatingBidding && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                      <div className="bg-white rounded-xl w-full max-w-md p-6 m-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="font-bold text-gray-900">建立新競價</h3>
-                            <button onClick={() => setIsCreatingBidding(false)} className="text-gray-400 hover:text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">商品名稱</label>
-                              <input type="text" value={newBidding.title} onChange={(e) => setNewBidding({...newBidding, title: e.target.value})} placeholder="例：iPhone 15 Pro Max 256GB 黑色" className="w-full rounded-lg border border-gray-200 px-3 py-2" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">商品描述</label>
-                              <textarea value={newBidding.description} onChange={(e) => setNewBidding({...newBidding, description: e.target.value})} placeholder="描述商品的狀態、特點等..." className="w-full rounded-lg border border-gray-200 px-3 py-2 h-24" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">起標價格 (HK$)</label>
-                              <input type="number" value={newBidding.startPrice} onChange={(e) => setNewBidding({...newBidding, startPrice: e.target.value})} placeholder="例：1000" className="w-full rounded-lg border border-gray-200 px-3 py-2" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">結束時間</label>
-                              <input type="datetime-local" value={newBidding.endTime} onChange={(e) => setNewBidding({...newBidding, endTime: e.target.value})} className="w-full rounded-lg border border-gray-200 px-3 py-2" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">商品類別</label>
-                              <select value={newBidding.category} onChange={(e) => setNewBidding({...newBidding, category: e.target.value})} className="w-full rounded-lg border border-gray-200 px-3 py-2">
-                              <option value="">選擇類別</option>
-                              <option value="電子產品">電子產品</option>
-                              <option value="時尚服飾">時尚服飾</option>
-                              <option value="遊戲娛樂">遊戲娛樂</option>
-                              <option value="家居生活">家居生活</option>
-                              <option value="其他">其他</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="mt-6 flex justify-end gap-2">
-                            <button onClick={() => setIsCreatingBidding(false)} className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">取消</button>
-                            <button onClick={handleCreateBidding} className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700">建立競價</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                )}
-
-                {activeTab === 'chat' && (
-                  <div className="bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm h-[calc(100vh-230px)] flex flex-col">
-                    {/* Chat Header (simplified) */}
-                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                    <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-600">
-                          <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                      </div>
-                      <h3 className="font-medium text-sm text-gray-900">SecondPrice AI 助理</h3>
-                    </div>
-                      {/* Optional: Add refresh or other controls */}
-                  </div>
-                  {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-100">
-                    {messages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
-                      >
-                          <motion.div 
-                            initial={{ opacity: 0, y: 5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className={cn(
-                              'max-w-[85%] rounded-2xl px-4 py-2 message-bubble',
-                          message.role === 'user' 
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-white text-gray-900 border border-gray-200'
-                            )}
-                          >
-                          {message.image && (
-                            <div className="mb-2 rounded-lg overflow-hidden">
-                              <img src={message.image} alt="Uploaded" className="w-full max-h-48 object-cover" />
-                            </div>
-                          )}
-                          {message.isLoading ? (
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
-                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
-                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
-                            </div>
-                          ) : (
-                            <div className="text-sm leading-relaxed whitespace-pre-line">{message.content}</div>
-                          )}
-                          </motion.div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  {/* Quick Suggestions */}
-                  {messages.length <= 2 && (
-                    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-                      <p className="text-xs text-gray-500 mb-2">推薦問題</p>
-                      <div className="flex flex-wrap gap-2">
-                        {suggestions.map((suggestion, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handleSuggestionClick(suggestion)}
-                              className="px-3 py-1.5 text-xs bg-white hover:bg-gray-100 rounded-full text-gray-700 border border-gray-200 transition-colors"
-                          >
-                            {suggestion}
-                          </button>
                         ))}
                       </div>
-                    </div>
-                  )}
-                  {/* Input Area */}
-                    <div className="p-3 border-t border-gray-200 bg-white">
-                    {previewUrl && (
-                        <div className="relative mb-2 w-16 h-16 rounded overflow-hidden border border-gray-200 group preview-image-container">
-                        <img src={previewUrl} alt="Preview" className="object-cover w-full h-full"/>
+                    ) : (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+                            strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 text-gray-300 mx-auto mb-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" 
+                            d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-700">您還沒有收藏任何物品</h3>
+                        <p className="text-gray-500 mt-2">瀏覽二手物品並點擊收藏圖標添加您喜歡的商品</p>
                         <button 
-                          onClick={() => { setPreviewUrl(null); setUploadedImage(null); fileInputRef.current.value = null; }}
-                          className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setActiveTab('products')}
+                          className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
+                          瀏覽二手物品
                         </button>
                       </div>
                     )}
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                      <div className="flex-1 relative">
-                        <input
-                          type="text"
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          placeholder="描述物品或上傳圖片..."
-                            className="w-full px-4 py-2 rounded-full bg-gray-100 text-gray-900 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-gray-500 text-sm"
-                          disabled={isLoading}
-                        />
-                          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                          <button type="button" onClick={handleUploadClick} title="上傳圖片" className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-indigo-600 p-1 rounded-full" disabled={isLoading}>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                  </div>
+                )}
+
+                {/* 收藏卡牌標籤內容 */}
+                {activeTab === 'cards' && (
+                  <>
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-medium text-gray-900">收藏卡牌市場</h2>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="搜索收藏卡牌..."
+                            value={cardSearchTerm}
+                            onChange={(e) => setCardSearchTerm(e.target.value)}
+                            className="bg-gray-100 border border-gray-200 rounded-full py-1.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white w-full md:w-60"
+                          />
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                           </svg>
+                        </div>
+                      </div>
+
+                      {/* 卡牌類型過濾器 */}
+                      <div className="mb-5">
+                        <span className="text-xs text-gray-500 mb-2 block">卡牌類型</span>
+                        <div className="flex flex-wrap gap-2">
+                          {cardCategories.map(category => (
+                            <button
+                              key={`card-category-${category}`}
+                              onClick={() => setActiveCardFilter(category)}
+                              className={`px-3 py-1.5 text-xs rounded-full ${
+                                activeCardFilter === category 
+                                  ? 'bg-indigo-100 text-indigo-700 font-medium' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {category}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 收藏卡牌市場洞察 */}
+                      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-6">
+                        <div className="flex items-start mb-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center mr-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">收藏卡牌市場洞察</h3>
+                            <p className="text-xs text-gray-600">根據近期拍賣數據和市場趨勢分析</p>
+                          </div>
+                        </div>
+                        
+                        <div className="ml-12">
+                          <p className="text-sm text-gray-700 mb-3">
+                            {activeCardFilter === 'Pokemon' 
+                              ? 'Pokemon卡牌市場持續上升，特別是早期稀有卡片如初版噴火龍和皮卡丘。PSA 10評級的卡片尤其搶手，價格在過去一年上漲了約30%。' 
+                              : activeCardFilter === '籃球卡'
+                              ? '籃球卡市場在傳奇球星如Kobe Bryant和Michael Jordan的簽名卡和新人卡方面表現強勁。限量版和平行閃卡的需求也在快速上升。'
+                              : activeCardFilter === '足球卡'
+                              ? '頂級球星如梅西、C羅的早期卡片持續升值，尤其是評級良好的新人卡和簽名卡。歐洲杯和世界杯期間，市場通常會迎來一波升值高峰。'
+                              : activeCardFilter === '遊戲王'
+                              ? '遊戲王卡片市場由稀有程度和玩家需求驅動，初版和限量版卡片持續保持高價值。日文版原版卡片在收藏家中特別受歡迎。'
+                              : '收藏卡牌市場整體呈上升趨勢，尤其是評級高的稀有卡片和經典角色。限量版、簽名卡和早期版本通常具有更高的收藏和投資價值。'}
+                          </p>
+                          
+                          <div className="flex space-x-2 text-xs">
+                            <button className="px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors text-gray-700">
+                              查看完整市場分析
+                            </button>
+                            <button className="px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors text-gray-700">
+                              卡牌投資指南
+                            </button>
+                            <button className="px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors text-gray-700">
+                              評級服務
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 卡牌列表 */}
+                    {filteredCards.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredCards.map((card) => (
+                          <motion.div
+                            key={card.id}
+                            ref={el => cardRefs.current[`card-${card.id}`] = el}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                            className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all card-product relative group"
+                            onClick={() => handleCardClick(card, 'card')}
+                          >
+                            {/* 稀有度標籤 */}
+                            <div className="absolute top-2 left-2 z-10">
+                              <span className="text-xs px-2 py-0.5 bg-black/70 text-white rounded-full backdrop-blur-sm">
+                                {card.rarity}
+                              </span>
+                            </div>
+                            
+                            {/* 卡牌類型標籤 */}
+                            <div className="absolute top-2 right-2 z-10">
+                              <span className="text-xs px-2 py-0.5 bg-indigo-600/70 text-white rounded-full backdrop-blur-sm">
+                                {card.category}
+                              </span>
+                            </div>
+                            
+                            {/* 卡牌圖片 */}
+                            <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                              <img 
+                                src={card.image} 
+                                alt={card.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                              />
+                              <div className="absolute bottom-2 left-2">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/90 text-white backdrop-blur-sm">
+                                  {card.condition}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="p-4">
+                              <h3 className="font-medium text-sm mb-2 line-clamp-2">{card.title}</h3>
+                              <p className="text-xs text-gray-500 mb-3 line-clamp-2">{card.description}</p>
+                              
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <div className="text-indigo-600 font-bold text-lg">HK${card.price.toLocaleString()}</div>
+                                  {card.originalPrice && (
+                                    <div className="text-xs text-gray-500 line-through">HK${card.originalPrice.toLocaleString()}</div>
+                                  )}
+                                </div>
+                                <div className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                                  {card.year}年 · {card.language}
+                                </div>
+                              </div>
+                              
+                              <div className="mt-3 flex justify-between items-center">
+                                <span className="text-xs text-gray-500">{card.platform} · {card.location}</span>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite(card.id);
+                                  }}
+                                  className="p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                                >
+                                  {isFavorited(card.id) ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ef4444" className="w-4 h-4">
+                                      <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                                    </svg>
+                                  ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-12 text-center">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-gray-400">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">找不到匹配的收藏卡牌</h3>
+                        <p className="text-gray-500 max-w-md mx-auto mb-6">
+                          嘗試更改搜索條件或卡牌類型過濾器，以查找更多收藏卡牌。
+                        </p>
+                        <button 
+                          onClick={() => {
+                            setCardSearchTerm('');
+                            setActiveCardFilter('全部');
+                          }}
+                          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors font-medium"
+                        >
+                          清除所有過濾條件
                         </button>
                       </div>
-                      <button
-                        type="submit"
-                        disabled={(!inputValue.trim() && !uploadedImage) || isLoading}
-                        className={cn(
-                            'p-2 rounded-full send-button',
-                          (!inputValue.trim() && !uploadedImage) || isLoading
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        )}
-                      >
-                        {isLoading ? (
-                          <div className="w-4 h-4 border-2 border-t-transparent border-current rounded-full animate-spin"></div>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
-                          </svg>
-                        )}
-                      </button>
-                    </form>
-                  </div>
-                </div>
+                    )}
+                  </>
                 )}
               </motion.div>
             </AnimatePresence>
@@ -1438,198 +2182,265 @@ export default function Home() {
         )}
         </main>
 
-      {/* 統一的頁腳 */}
-      <footer className="py-6 border-t border-gray-100 mt-10 bg-white">
-         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center text-white text-xs font-bold">
-                SP
+      {/* 統一的頁腳 - 頁腳不再使用固定高度，而是自適應其內容高度 */}
+      <footer className="w-full bg-white border-t border-gray-100 mt-auto z-30 relative">
+         <div className="max-w-7xl mx-auto px-4 md:px-6 py-10">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {/* Logo和介紹 */}
+            <div className="col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                  SP
+                </div>
+                <span className="font-semibold text-gray-900">SecondPrice.hk</span>
               </div>
-              <p className="text-gray-500 text-sm">© 2024 SecondPrice.hk</p>
+              <p className="text-sm text-gray-500 mb-4">
+                SecondPrice是香港首個結合AI估價的二手物品和循環經濟平台，為您提供即時估價、買賣和競價服務。
+              </p>
+              <div className="flex gap-4">
+                <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-facebook" viewBox="0 0 16 16">
+                    <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-instagram" viewBox="0 0 16 16">
+                    <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-linkedin" viewBox="0 0 16 16">
+                    <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-twitter" viewBox="0 0 16 16">
+                    <path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z"/>
+                  </svg>
+                </a>
+              </div>
             </div>
             
-            <div className="flex gap-6">
-              <a href="#" className="text-gray-500 hover:text-indigo-600 text-sm">關於我們</a>
-              <a href="#" className="text-gray-500 hover:text-indigo-600 text-sm">使用條款</a>
-              <a href="#" className="text-gray-500 hover:text-indigo-600 text-sm">隱私政策</a>
-              <a href="#" className="text-gray-500 hover:text-indigo-600 text-sm">聯繫我們</a>
+            {/* 鏈接列表 */}
+            <div className="col-span-1">
+              <h3 className="font-medium text-gray-900 mb-4">快速鏈接</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">二手物品</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">競價平台</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">AI估價</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">循環經濟資訊</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">回收服務</a></li>
+              </ul>
             </div>
+            
+            {/* 法律和條款 */}
+            <div className="col-span-1">
+              <h3 className="font-medium text-gray-900 mb-4">法律與條款</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">使用條款</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">隱私政策</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">買家保障</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">賣家指南</a></li>
+                <li><a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">知識產權</a></li>
+              </ul>
             </div>
+            
+            {/* 聯繫我們 */}
+            <div className="col-span-1">
+              <h3 className="font-medium text-gray-900 mb-4">聯繫我們</h3>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-gray-400 mt-0.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                  <span className="text-gray-500">香港九龍觀塘開源道64號源成中心11樓</span>
+                </li>
+                <li className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-gray-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                  </svg>
+                  <a href="mailto:info@secondprice.hk" className="text-gray-500 hover:text-indigo-600 transition-colors">info@secondprice.hk</a>
+                </li>
+                <li className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-gray-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  <a href="tel:+85212345678" className="text-gray-500 hover:text-indigo-600 transition-colors">+852 1234 5678</a>
+                </li>
+              </ul>
+              
+              {/* 電子報訂閱 */}
+              <div className="mt-6">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">訂閱最新消息</h4>
+                <div className="flex">
+                  <input 
+                    type="email" 
+                    placeholder="您的電子郵件" 
+                    className="flex-grow px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white transition-all"
+                  />
+                  <button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-lg px-3 text-sm transition-colors">
+                    訂閱
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 版權信息 */}
+          <div className="pt-8 mt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-sm text-gray-500">© {new Date().getFullYear()} SecondPrice.hk 版權所有</p>
+            <div className="flex items-center mt-4 md:mt-0">
+              <img src="/hong-kong.png" alt="Made in Hong Kong" className="h-5 mr-2" onError={(e) => e.target.style.display = 'none'} />
+              <span className="text-xs text-gray-500">香港設計與製作</span>
+            </div>
+          </div>
           </div>
         </footer>
 
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl w-full max-w-md p-6 m-4"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-gray-900 text-xl">
-                {authMode === 'login' ? '登入 SecondPrice' : '註冊新帳戶'}
-              </h3>
-              <button 
-                onClick={() => setShowAuthModal(false)} 
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-      </div>
-            
-            {authError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {authError}
-              </div>
-            )}
-            
-            {authMode === 'login' ? (
-              /* Login Form */
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">電郵地址</label>
-                  <input 
-                    type="email" 
-                    value={loginForm.email}
-                    onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                    placeholder="your@email.com" 
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">密碼</label>
-                  <input 
-                    type="password" 
-                    value={loginForm.password}
-                    onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                    placeholder="••••••••" 
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
-                </div>
-                <div className="pt-2">
-                  <button 
-                    onClick={handleLogin}
-                    disabled={authLoading}
-                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center"
-                  >
-                    {authLoading ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    ) : null}
-                    登入
-                  </button>
-                </div>
-                <div className="text-center text-sm text-gray-500">
-                  還沒有帳戶？{' '}
-                  <button 
-                    onClick={toggleAuthMode}
-                    className="text-indigo-600 font-medium hover:underline"
-                  >
-                    立即註冊
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Registration Form */
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">用戶名稱</label>
-                  <input 
-                    type="text" 
-                    value={registerForm.username}
-                    onChange={(e) => setRegisterForm({...registerForm, username: e.target.value})}
-                    placeholder="用戶名稱" 
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">電郵地址</label>
-                  <input 
-                    type="email" 
-                    value={registerForm.email}
-                    onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
-                    placeholder="your@email.com" 
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">密碼</label>
-                  <input 
-                    type="password" 
-                    value={registerForm.password}
-                    onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
-                    placeholder="••••••••" 
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">確認密碼</label>
-                  <input 
-                    type="password" 
-                    value={registerForm.confirmPassword}
-                    onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
-                    placeholder="••••••••" 
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
-                </div>
-                <div className="pt-2">
-                  <button 
-                    onClick={handleRegister}
-                    disabled={authLoading}
-                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center"
-                  >
-                    {authLoading ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    ) : null}
-                    註冊
-                  </button>
-                </div>
-                <div className="text-center text-sm text-gray-500">
-                  已有帳戶？{' '}
-                  <button 
-                    onClick={toggleAuthMode}
-                    className="text-indigo-600 font-medium hover:underline"
-                  >
-                    登入
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* Social Login Options */}
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">或使用</span>
-                </div>
+      {/* Authentication Modal */}
+      <AuthModal 
+        showModal={showAuthModal} 
+        setShowModal={setShowAuthModal} 
+        setIsLoggedIn={setIsLoggedIn} 
+        setActiveTab={setActiveTab} 
+      />
+
+      {/* 發帖子模態框 */}
+      <AnimatePresence>
+        {isCreatingPost && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-xl w-full max-w-md p-6 m-4"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-900">發布新帖子</h3>
+                <button onClick={() => setIsCreatingPost(false)} className="text-gray-400 hover:text-gray-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
               
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button className="flex items-center justify-center px-4 py-2 border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                  <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="#4285F4" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 24C18.6274 24 24 18.6274 24 12C24 5.37258 18.6274 0 12 0C5.37258 0 0 5.37258 0 12C0 18.6274 5.37258 24 12 24Z" fill="white"></path>
-                    <path d="M12.0003 4.6665C14.7003 4.6665 17.0169 5.9165 18.5336 7.8665L15.8836 10.5165C15.0503 9.4665 13.6003 8.7665 12.0003 8.7665C9.33362 8.7665 7.16695 10.9332 7.16695 13.5998C7.16695 16.2665 9.33362 18.4332 12.0003 18.4332C14.1503 18.4332 16.0003 17.0332 16.5836 15.0832H12.0003V11.1665H20.767C20.9336 11.8665 21.0003 12.5832 21.0003 13.3332C21.0003 17.8332 17.117 21.3332 12.0003 21.3332C7.40028 21.3332 3.66695 17.5998 3.66695 12.9998C3.66695 8.3998 7.40028 4.6665 12.0003 4.6665Z" fill="#4285F4"></path>
-                  </svg>
-                  Google
-                </button>
-                <button className="flex items-center justify-center px-4 py-2 border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                  <svg className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="#1877F2" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 10C20 4.48 15.52 0 10 0C4.48 0 0 4.48 0 10C0 14.84 3.44 18.87 8 19.8V13H6V10H8V7.5C8 5.57 9.57 4 11.5 4H14V7H12C11.45 7 11 7.45 11 8V10H14V13H11V19.95C16.05 19.45 20 15.19 20 10Z" fill="#1877F2"></path>
-                  </svg>
-                  Facebook
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-      
+              <form onSubmit={(e) => { e.preventDefault(); handleCreatePost(); }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">帖子標題</label>
+                  <input 
+                    type="text" 
+                    value={newPost.title} 
+                    onChange={(e) => setNewPost({...newPost, title: e.target.value})} 
+                    placeholder="輸入標題..." 
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">帖子內容</label>
+                  <textarea 
+                    value={newPost.content} 
+                    onChange={(e) => setNewPost({...newPost, content: e.target.value})} 
+                    placeholder="分享你的想法..." 
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 h-32"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">圖片</label>
+                  <div className="flex gap-2 mb-2">
+                    <input 
+                      type="url" 
+                      value={newPost.image && newPost.image.startsWith('http') ? newPost.image : ''} 
+                      onChange={(e) => setNewPost({...newPost, image: e.target.value})} 
+                      placeholder="https://example.com/image.jpg" 
+                      className="flex-grow rounded-lg border border-gray-200 px-3 py-2"
+                    />
+                    <label className="cursor-pointer px-3 py-2 bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors text-sm font-medium">
+                      <span>上傳圖片</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        className="hidden" 
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">輸入圖片連結或上傳本地圖片（max: 2MB），若不提供圖片，系統將隨機生成一張圖片</p>
+                  
+                  {/* 圖片預覽 */}
+                  {newPost.image && (
+                    <div className="mt-2 relative rounded-lg overflow-hidden bg-gray-100 group">
+                      <img 
+                        src={newPost.image} 
+                        alt="圖片預覽"
+                        className="w-full h-40 object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://placehold.co/600x400?text=無法載入圖片';
+                        }}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setNewPost({...newPost, image: ''})}
+                        className="absolute top-2 right-2 bg-white/80 p-1 rounded-full text-gray-700 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">標籤 (用逗號分隔)</label>
+                  <input 
+                    type="text" 
+                    value={newPost.tags} 
+                    onChange={(e) => setNewPost({...newPost, tags: e.target.value})} 
+                    placeholder="回收指南, 二手市場, 環保" 
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
+                  />
+                </div>
+                
+                <div className="mt-6 flex justify-end gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsCreatingPost(false)} 
+                    className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    disabled={postSuccess}
+                  >
+                    取消
+                  </button>
+                  <button 
+                    type="submit" 
+                    className={`px-4 py-2 rounded-full text-sm font-medium ${
+                      postSuccess 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    } transition-colors flex items-center justify-center`}
+                    disabled={postSuccess}
+                  >
+                    {postSuccess ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        發布成功
+                      </>
+                    ) : '發布帖子'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* 添加卡片詳情模態框 */}
       <AnimatePresence mode="wait">
         {cardModalOpen && selectedCard && (
@@ -1737,9 +2548,9 @@ export default function Home() {
                 {selectedCard && !selectedCard.isClosing && (
                   <div className="flex flex-col h-full">
                     {/* 內容頭部 */}
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center justify-between mb-3">
                       {selectedCard.type === 'feed' && (
-                        <>
+                        <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden">
                             <img 
                               src={selectedCard.author?.avatar} 
@@ -1751,7 +2562,7 @@ export default function Home() {
                             <h3 className="font-medium text-gray-900">{selectedCard.author?.name}</h3>
                             <p className="text-xs text-gray-500">發布於 {new Date().toLocaleDateString('zh-HK')}</p>
                           </div>
-                        </>
+                        </div>
                       )}
                       
                       {selectedCard.type === 'product' && (
@@ -1817,7 +2628,7 @@ export default function Home() {
                             {selectedCard.location}
                           </div>
                           
-                          <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+                          <button className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-medium transition-colors hover:bg-indigo-700">
                             查看原始頁面
                           </button>
                         </div>
@@ -1925,7 +2736,7 @@ export default function Home() {
                             />
                             <button 
                               onClick={() => handleSubmitComment(selectedCard.id, selectedCard.type)}
-                              className="bg-indigo-600 hover:bg-indigo-700 rounded-r-full px-4 text-white text-sm font-medium transition-colors"
+                              className="bg-indigo-600 hover:bg-indigo-700 rounded-r-full px-4 py-2 text-white text-sm font-medium transition-colors"
                             >
                               發送
                             </button>
@@ -2002,6 +2813,211 @@ export default function Home() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* 確保底部沒有額外的浮動按鈕 */}
+      <div className="fixed right-6 bottom-6 z-40 space-y-2">
+        {/* 完全清空，刪除所有"+"按鈕 */}
+      </div>
+
+      {/* AI助理浮動按鈕 - 使用framer-motion使其可拖動，加入半透明效果 */}
+      {!showAiAssistant && (
+        <motion.button 
+          drag
+          dragMomentum={false}
+          dragConstraints={{
+            top: 60,
+            left: 20,
+            right: 20,
+            bottom: 100
+          }}
+          initial={{ bottom: 120, right: 20 }}
+          className="fixed z-50 w-14 h-14 bg-gradient-to-r from-indigo-600/90 to-purple-600/90 text-white rounded-full shadow-lg flex items-center justify-center hover:from-indigo-700/90 hover:to-purple-700/90 transition-all backdrop-blur-sm"
+          onClick={() => setShowAiAssistant(true)}
+          style={{
+            position: 'fixed',
+            bottom: '120px',
+            right: '20px'
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+          </svg>
+        </motion.button>
+      )}
+      
+      {/* AI助理漂浮窗口 - 改進定位方式確保不會與頁腳重疊 */}
+      {showAiAssistant && (
+        <motion.div 
+          drag
+          dragMomentum={false}
+          dragElastic={0.1}
+          dragConstraints={{ 
+            left: 10, 
+            right: window.innerWidth - 290, 
+            top: 70, 
+            bottom: window.innerHeight - 450  // 限制在頁腳上方
+          }}
+          className={`fixed z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-xl overflow-hidden border border-purple-200/70 transition-all ${aiMinimized ? 'w-64 h-12' : 'w-80 h-[450px]'}`}
+          initial={{ 
+            x: window.innerWidth - 330, 
+            y: 100  // 初始位置設置在頁面頂部而非底部
+          }}
+        >
+          {/* 標題欄 */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-indigo-600/90 to-purple-600/90 backdrop-blur-sm text-white cursor-grab">
+            <div className="flex items-center">
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white mr-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-sm">AI 智能助理</h3>
+            </div>
+            <div className="flex items-center space-x-1">
+              <button 
+                onClick={() => setAiMinimized(!aiMinimized)} 
+                className="p-1 rounded-full hover:bg-white/20"
+              >
+                {aiMinimized ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M5.25 6h.008v.008H5.25V6zM7.5 6h.008v.008H7.5V6zm2.25 0h.008v.008H9.75V6z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" />
+                  </svg>
+                )}
+              </button>
+              <button 
+                onClick={() => setShowAiAssistant(false)} 
+                className="p-1 rounded-full hover:bg-white/20"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          {/* 最小化時不顯示內容 */}
+          {!aiMinimized && (
+            <>
+              {/* 聊天消息 */}
+              <div className="flex-1 overflow-y-auto p-3 bg-gray-50/90 backdrop-blur-sm" style={{ height: 'calc(100% - 40px - 110px)' }}>
+                <div className="space-y-3">
+                  {aiMessages.length === 0 && (
+                    <div className="text-center p-4">
+                      <p className="text-sm text-gray-500">您好！我是SecondPrice的AI助理，有什麼可以幫您的嗎？</p>
+                    </div>
+                  )}
+                  {aiMessages.map((message, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[85%] rounded-2xl p-2.5 ${
+                        message.role === 'user' 
+                          ? 'bg-indigo-600/90 backdrop-blur-sm text-white' 
+                          : 'bg-white/90 backdrop-blur-sm border border-gray-200/70 shadow-sm'
+                      }`}>
+                        {message.isLoading ? (
+                          <div className="flex items-center space-x-1 h-5 px-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '600ms' }}></div>
+                          </div>
+                        ) : (
+                          <div className={`text-xs ${message.role === 'user' ? 'text-white' : 'text-gray-800'}`}>
+                            {formatAiMessageContent(message.content)}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+              
+              {/* 建議選項 */}
+              {showAiSuggestions && aiSuggestions.length > 0 && (
+                <div className="p-2 bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/70 overflow-x-auto">
+                  <div className="flex space-x-1.5">
+                    {aiSuggestions.slice(0, 3).map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setAiInputValue(suggestion);
+                          handleAiSendMessage({ preventDefault: () => {} });
+                        }}
+                        className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs text-gray-700 border border-gray-200/70 hover:bg-gray-100/90 transition-colors whitespace-nowrap flex-shrink-0"
+                      >
+                        {suggestion.length > 15 ? `${suggestion.slice(0, 15)}...` : suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 訊息輸入區 */}
+              <div className="p-2 bg-white/90 backdrop-blur-sm border-t border-gray-200/70">
+                <form onSubmit={handleAiSendMessage} className="flex gap-1.5">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      placeholder="詢問我關於二手物品的問題..."
+                      value={aiInputValue}
+                      onChange={(e) => setAiInputValue(e.target.value)}
+                      className="w-full rounded-full border border-gray-300/70 bg-white/70 backdrop-blur-sm py-1.5 pl-3 pr-8 focus:outline-none focus:border-indigo-500 text-xs"
+                    />
+                    <button 
+                      type="button" 
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-indigo-600 p-0.5"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!aiInputValue.trim() || isAiLoading}
+                    className={`rounded-full p-1.5 ${
+                      !aiInputValue.trim() || isAiLoading 
+                      ? 'bg-gray-200/90 text-gray-400' 
+                      : 'bg-indigo-600/90 backdrop-blur-sm text-white hover:bg-indigo-700/90'
+                    } transition-colors`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
+        </motion.div>
+      )}
+      
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toast.visible && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg ${
+              toast.type === 'success' ? 'bg-green-500' : 
+              toast.type === 'error' ? 'bg-red-500' : 
+              'bg-blue-500'
+            } text-white`}
+          >
+            {toast.message}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
