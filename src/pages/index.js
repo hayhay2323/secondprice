@@ -1093,7 +1093,6 @@ export default function Home() {
     { key: 'bidding', label: '競價' },
   ];
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [products, setProducts] = useState([]);
   const [bidItems, setBidItems] = useState([]);
   const [followed, setFollowed] = useState([]);

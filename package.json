@@ -20,6 +20,7 @@
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "animejs": "^3.1.0",
+    "antd": "^5.24.8",
     "axios": "^1.8.4",
     "cheerio": "^1.0.0",
     "framer-motion": "^10.18.0",
