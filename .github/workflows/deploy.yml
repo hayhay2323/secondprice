@@ -28,10 +28,17 @@ jobs:
       - name: Install dependencies
         run: npm install
         
+      - name: Install missing dependencies
+        run: |
+          npm install @heroicons/react@v1 mongoose bcryptjs jsonwebtoken
+          
       - name: Build
         run: npm run build
         env:
           NODE_ENV: production
+          
+      - name: Export
+        run: npm run export
         
       - name: Add .nojekyll file
         run: touch out/.nojekyll
