@@ -1,6 +1,6 @@
 import React from 'react';
 
-function Error({ statusCode }) {
+function ErrorPage({ statusCode }) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="text-center p-8 bg-white rounded-lg shadow-md">
@@ -21,9 +21,9 @@ function Error({ statusCode }) {
   );
 }
 
-Error.getInitialProps = ({ res, err }) => {
+ErrorPage.getInitialProps = ({ res, err }) => {
   const statusCode = res ? res.statusCode : err ? err.statusCode : 404;
   return { statusCode };
 };
 
-export default Error; 
+export default ErrorPage; 

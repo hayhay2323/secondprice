@@ -1089,10 +1089,10 @@ export default function Home() {
     { key: 'follow', label: '關注' },
     { key: 'explore', label: '探索' },
     { key: 'products', label: '二手平台' },
-    { key: 'cards', label: '收藏卡牌' },  // 新增卡牌標籤
     { key: 'bidding', label: '競價' },
   ];
 
+  // Remove duplicate state definitions that were already defined earlier
   const [products, setProducts] = useState([]);
   const [bidItems, setBidItems] = useState([]);
   const [followed, setFollowed] = useState([]);
